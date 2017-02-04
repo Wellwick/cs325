@@ -108,6 +108,10 @@ def binop():
 def unop():
   '-' or not or '#'
 
+def main():
+  file = open('test.lua', 'r');
+  file.read()
+
 if __name__ == "__main__":
   import sys
   parse(sys.argv[1])
