@@ -8,6 +8,7 @@
 #Can either do a backtracking parser or a predictive parser
 #Predictive probably the best choice but requires look ahead
 
+'''
 def chunk():
   {stat() ';'} #potentially repeats
   [laststat() ';']
@@ -107,11 +108,21 @@ def binop():
 
 def unop():
   '-' or not or '#'
+'''
 
-def main():
-  file = open('test.lua', 'r');
-  file.read()
+def parse(filename):
+  
+  with open(filename) as f:
+    data = f.readlines()
+  
+  #break each line by whitespace characters
+  data = [x.strip( ) for x in data]
+  
+  print(data)
 
 if __name__ == "__main__":
   import sys
-  parse(sys.argv[1])
+  try:
+    parse(sys.argv[1])
+  except IndexError:
+    print("Need to provide a lua file to parse")
