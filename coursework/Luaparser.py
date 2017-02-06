@@ -8,6 +8,8 @@
 #Can either do a backtracking parser or a predictive parser
 #Predictive probably the best choice but requires look ahead
 
+import re
+
 '''
 def chunk():
   {stat() ';'} #potentially repeats
@@ -110,6 +112,14 @@ def unop():
   '-' or not or '#'
 '''
 
+def printFunctions(data):
+    #a variable or function name must be alphanumeric but not containing only numbers and cannot be a keyword
+    varName = re.compile('()')
+    expr = re.compile('function( )*[0-9]*[a-zA-Z_](\w)*\(([0-9]*[a-zA-Z_](\w)*\,( )*)*[0-9]*[a-zA-Z_](\w)*\)') #
+    for x in data:
+        if (expr.search(x)):
+            print(x)
+
 def parse(filename):
   
   with open(filename) as f:
@@ -118,7 +128,7 @@ def parse(filename):
   #break each line by whitespace characters
   data = [x.strip( ) for x in data]
   
-  print(data)
+  printFunctions(data)
 
 if __name__ == "__main__":
   import sys
