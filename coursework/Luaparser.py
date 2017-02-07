@@ -67,7 +67,7 @@ def explist(xList, count):
   x = ""
   while (len(xList) > 0):
     #need to break up the string
-    if (re.match('\'', xList)):
+    if re.match('\'', xList):
       #got to make sure when we find another ' that it isn't an escaped character
       charCount = 1
       x = xList[:charCount]
@@ -88,6 +88,28 @@ def explist(xList, count):
             String(x, count)
             xList = xList[charCount+index+1:]
             searching = False
+    elif re.match('\"', xList):
+      #got to make sure when we find another " that it isn't an escaped character
+      charCount = 1
+      x = xList[:charCount]
+      searching = True
+      while (searching):
+        index = xList[charCount:].find('\"')
+        if (index == -1):
+          checkErrors()
+          print("Expected \" to close string on line ", count+1)
+          return
+        else:
+          if xList[charCount:].find('\\') == index-1 and index != 0:
+            #we have found an escaped character
+            charCount = charCount + index + 1
+          else:
+            #have reached the end of the string
+            x = xList[1:charCount+index]
+            String(x, count)
+            xList = xList[charCount+index+1:]
+            searching = False
+      
     #exp(x, count)
   #{exp() ','} exp()
 
