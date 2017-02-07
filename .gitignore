@@ -87,3 +87,6 @@ ENV/
 
 # Rope project settings
 .ropeproject
+
+#Exclude the lua out file
+luac.out
