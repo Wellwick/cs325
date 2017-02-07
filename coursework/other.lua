@@ -6,4 +6,4 @@ for i = 2, 10 do
   end
 end
 
-return
+return "hi", 3, nil

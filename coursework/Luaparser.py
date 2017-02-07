@@ -18,10 +18,20 @@ funcNames = []
 #regular expressions used 
 last = re.compile('return|break')
 #a variable or function name must be alphanumeric but not containing only numbers and cannot be a keyword
-varFunc = re.compile('function( )*[0-9]*[a-zA-Z_](\w)*\(([0-9]*[a-zA-Z_](\w)*\,( )*)*[0-9]*[a-zA-Z_](\w)*\)')
+varFuncName = '[0-9]*[a-zA-Z_](\w)*'
+var = re.compile(varFuncName)
+func = re.compile('function( )*'+varFuncName+'(('+varFuncName+',( )*)*'+varFuncName+')')
 
-#boolean for keeping track of loopDepth
+#counter for keeping track of loopDepth
 loopDepth = 0
+errorsFound = False
+
+
+def checkErrors():
+  global errorsFound
+  if (not errorsFound):
+    errorsFound = True
+    print("Errors found")
 
 def chunk(data, count):
   #a chunk can be broken on return or break
@@ -47,9 +57,45 @@ def laststat(data, count):
     #don't decrease loopDepth until we find an end
     return count
   else: #we are matching with 'return'
+    if re.search(' ', data[count]):
+      #if this occurs then we are dealing with a variable name most likely
+      explist(data[count][6:].strip( ), count)
     return count
 
-'''
+def explist(xList, count):
+  #apparently it is fully possible to return several different types in a list!
+  x = ""
+  while (len(xList) > 0):
+    #need to break up the string
+    if (re.match('\'', xList)):
+      #got to make sure when we find another ' that it isn't an escaped character
+      charCount = 1
+      x = xList[:charCount]
+      searching = True
+      while (searching):
+        index = xList[charCount:].find('\'')
+        if (index == -1):
+          checkErrors()
+          print("Expected \' to close string on line ", count+1)
+          return
+    exp(x, count)
+  #{exp() ','} exp()
+
+def exp(x, count):
+  '''
+  nil or
+  false or
+  true or
+  Number() or
+  String() or
+  '...' or 
+  function() or
+  prefixexp() or
+  tableconstructor() or
+  exp() binop() exp() or
+  unop() exp()
+
+
 def stat():
   varlist() '=' explist() or
   functioncall() or
@@ -65,11 +111,6 @@ def stat():
   local function Name() funcbody() or
   local namelist() ['=' explist()]
 
-
-def laststat():
-  return [explist()] or
-  break
-
 def funcname():
   Name() {',' Name()} [':' Name()]
 
@@ -84,21 +125,6 @@ def var():
 def namelist():
   Name {',' Name}
 
-def explist():
-  {exp() ','} exp()
-
-def exp():
-  nil or
-  false or
-  true or
-  Number() or
-  String() or
-  '...' or 
-  function() or
-  prefixexp() or
-  tableconstructor() or
-  exp() binop() exp() or
-  unop() exp()
 
 def prefixexp():
   var() or
@@ -146,7 +172,7 @@ def unop():
 
 def printFunctions(data):
     for x in data:
-        if (varFunc.search(x)):
+        if (func.search(x)):
             print(x)
 
 def parse(filename):
@@ -160,14 +186,14 @@ def parse(filename):
   for y in data:
     for x in y:
       x = x.strip( )
-      print(x)
       strippedData.extend([x])
   
   data = strippedData
-  #print(block(data, 0))
+  print(block(data, 0))
   print(data)
   #runs if no errors are detected
-  #printFunctions(data)
+  global errorsFound
+  if (not errorsFound): printFunctions(data)
 
 if __name__ == "__main__":
   import sys
