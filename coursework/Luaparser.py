@@ -10,14 +10,33 @@
 
 import re
 
+#regular expressions used 
+last = re.compile('return|break')
+#a variable or function name must be alphanumeric but not containing only numbers and cannot be a keyword
+varFunc = re.compile('function( )*[0-9]*[a-zA-Z_](\w)*\(([0-9]*[a-zA-Z_](\w)*\,( )*)*[0-9]*[a-zA-Z_](\w)*\)')
+
+
+def chunk(data, count):
+  #a chunk can be broken on return or break
+  #break can only be used when in a loop
+  statementsExecuting = True
+  while (statementsExecuting):
+    if last.match(data[count]):
+      count = laststat(data, count) + 1
+      statementsExecuting = False
+    else:
+      count = stat(data, count) + 1
+  return count
+
+def block(data, count):
+  return chunk(data, count)
+
+def stat(data, count):
+  return count
+
+def laststat(data, count): return count
+
 '''
-def chunk():
-  {stat() ';'} #potentially repeats
-  [laststat() ';']
-
-def block():
-  chunk()
-
 def stat():
   varlist() '=' explist() or
   functioncall() or
@@ -26,7 +45,7 @@ def stat():
   repeat block() until exp() or
   if exp() then block() 
   {elseif exp() then block()} #potentially repeats
-  ]else block()] end or
+  [else block()] end or
   for Name() '=' exp ',' exp [',' exp] do block() end or
   for namelist() in explist() do block() end or
   function funcname() funcbody() or
@@ -42,7 +61,7 @@ def funcname():
   Name() {',' Name()} [':' Name()]
 
 def varlist():
-  var() {',' var}
+  var() {',' var()}
 
 def var():
   Name() or
@@ -113,11 +132,8 @@ def unop():
 '''
 
 def printFunctions(data):
-    #a variable or function name must be alphanumeric but not containing only numbers and cannot be a keyword
-    varName = re.compile('()')
-    expr = re.compile('function( )*[0-9]*[a-zA-Z_](\w)*\(([0-9]*[a-zA-Z_](\w)*\,( )*)*[0-9]*[a-zA-Z_](\w)*\)') #
     for x in data:
-        if (expr.search(x)):
+        if (varFunc.search(x)):
             print(x)
 
 def parse(filename):
@@ -128,6 +144,9 @@ def parse(filename):
   #break each line by whitespace characters
   data = [x.strip( ) for x in data]
   
+  print(block(data, 0))
+  
+  #runs if no errors are detected
   printFunctions(data)
 
 if __name__ == "__main__":
