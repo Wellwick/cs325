@@ -41,11 +41,13 @@ def chunk(data, count):
   while (statementsExecuting and count < len(data)):
     token = data[count].get_token()
     print(token)
-    if last.match(data[count]):
-      count = laststat(data, count) + 1
+    if last.match(token):
+      laststat(token, data[count])
+      count = count + 1
       statementsExecuting = False
     else:
-      count = stat(data, count) + 1
+      stat(data, count)
+      count = count + 1
   return count
 
 def block(data, count):
@@ -55,17 +57,26 @@ def stat(data, count):
   
   return count
 
-def laststat(data, count): 
-  if re.match('break', data[count]) and loopDepth > 0:
+def laststat(token, data): 
+  print("LastStat: " + token)
+  
+  nextToken = data.get_token()
+  
+  if re.match('break', token) && loopDepth == 0:
     #don't decrease loopDepth until we find an end
-    return count
+    if nextToken != None and nextToken != '':
+      checkErrors()
+      print("unexpected value after break")
+    
+    if loopDepth == 0:
+      checkErrors()
+      print("break encoutered not in a loop")
   else: #we are matching with 'return'
-    if re.search(' ', data[count]):
+    if nextToken != None and nextToken != '':
       #if this occurs then we are dealing with a variable name most likely
-      explist(data[count][6:].strip( ), count)
-    return count
+      explist(nextToken, data)
 
-def explist(xList, count):
+def explist(token, data):
   #apparently it is fully possible to return several different types in a list!
   x = ""
   while (len(xList) > 0):
@@ -249,7 +260,8 @@ def parse(filename):
   
   data = strippedData
   
-  #print(block(data, 0))
+  print(block(data, 0))
+  
   #runs if no errors are detected
   global errorsFound
   if (not errorsFound): printFunctions(data)
