@@ -39,6 +39,8 @@ def chunk(data, count):
   #break can only be used when in a loop
   statementsExecuting = True
   while (statementsExecuting and count < len(data)):
+    token = data[count].get_token()
+    print(token)
     if last.match(data[count]):
       count = laststat(data, count) + 1
       statementsExecuting = False
@@ -215,8 +217,21 @@ def unop():
 
 def printFunctions(data):
     for x in data:
-        if (func.search(x)):
-            print(x)
+        if re.match('function', x.get_token()):
+            funcString = "Function: " + x.get_token() + ", "
+            x.get_token()
+            string = x.get_token()
+            
+            if re.match('\)', string):
+              #no parameters
+              print("No parameters")
+              return
+            
+            getParameters = True
+            while(getParameters):
+              if (not re.match(',', x.get_token())): getParameters = False
+              else: string = string + ", " + x.get_token()
+            print(funcString + "Parameters: " + string)
 
 def parse(filename):
   
@@ -233,13 +248,11 @@ def parse(filename):
       strippedData.extend([x])
   
   data = strippedData
+  
   #print(block(data, 0))
-  for x in data:
-    for y in x:
-      print(y)
   #runs if no errors are detected
-  #global errorsFound
-  #if (not errorsFound): printFunctions(data)
+  global errorsFound
+  if (not errorsFound): printFunctions(data)
 
 if __name__ == "__main__":
   import sys
