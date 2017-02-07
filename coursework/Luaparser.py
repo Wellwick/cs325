@@ -78,10 +78,25 @@ def explist(xList, count):
           checkErrors()
           print("Expected \' to close string on line ", count+1)
           return
-    exp(x, count)
+        else:
+          if xList[charCount:].find('\\') == index-1 and index != 0:
+            #we have found an escaped character
+            charCount = charCount + index + 1
+          else:
+            #have reached the end of the string
+            x = xList[1:charCount+index]
+            String(x, count)
+            xList = xList[charCount+index+1:]
+            searching = False
+    #exp(x, count)
   #{exp() ','} exp()
 
+def String(x, count):
+  #shouldn't even be needed
+  p=1
+
 def exp(x, count):
+  p=1
   '''
   nil or
   false or
