@@ -10,17 +10,24 @@
 
 import re
 
+#variable name list
+varNames = []
+#function name list
+funcNames = []
+
 #regular expressions used 
 last = re.compile('return|break')
 #a variable or function name must be alphanumeric but not containing only numbers and cannot be a keyword
 varFunc = re.compile('function( )*[0-9]*[a-zA-Z_](\w)*\(([0-9]*[a-zA-Z_](\w)*\,( )*)*[0-9]*[a-zA-Z_](\w)*\)')
 
+#boolean for keeping track of loopDepth
+loopDepth = 0
 
 def chunk(data, count):
   #a chunk can be broken on return or break
   #break can only be used when in a loop
   statementsExecuting = True
-  while (statementsExecuting):
+  while (statementsExecuting and count < len(data)):
     if last.match(data[count]):
       count = laststat(data, count) + 1
       statementsExecuting = False
@@ -32,9 +39,15 @@ def block(data, count):
   return chunk(data, count)
 
 def stat(data, count):
+  
   return count
 
-def laststat(data, count): return count
+def laststat(data, count): 
+  if re.match('break', data[count]) and loopDepth > 0:
+    #don't decrease loopDepth until we find an end
+    return count
+  else: #we are matching with 'return'
+    return count
 
 '''
 def stat():
@@ -142,12 +155,19 @@ def parse(filename):
     data = f.readlines()
   
   #break each line by whitespace characters
-  data = [x.strip( ) for x in data]
+  data = [x.split(';') for x in data]
+  strippedData = []
+  for y in data:
+    for x in y:
+      x = x.strip( )
+      print(x)
+      strippedData.extend([x])
   
-  print(block(data, 0))
-  
+  data = strippedData
+  #print(block(data, 0))
+  print(data)
   #runs if no errors are detected
-  printFunctions(data)
+  #printFunctions(data)
 
 if __name__ == "__main__":
   import sys
