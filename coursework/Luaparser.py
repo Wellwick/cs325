@@ -9,6 +9,7 @@
 #Predictive probably the best choice but requires look ahead
 
 import re
+import shlex
 
 #variable name list
 varNames = []
@@ -109,7 +110,12 @@ def explist(xList, count):
             String(x, count)
             xList = xList[charCount+index+1:]
             searching = False
-      
+    
+    #after the checking is finished, clean for next round of exp() removal
+    xList = xList.strip( )
+    if(re.match(',', xList)):
+         xList = xList[1:]
+    xList = xList.strip( )
     #exp(x, count)
   #{exp() ','} exp()
 
@@ -223,14 +229,17 @@ def parse(filename):
   for y in data:
     for x in y:
       x = x.strip( )
+      x = shlex.shlex(x)
       strippedData.extend([x])
   
   data = strippedData
-  print(block(data, 0))
-  print(data)
+  #print(block(data, 0))
+  for x in data:
+    for y in x:
+      print(y)
   #runs if no errors are detected
-  global errorsFound
-  if (not errorsFound): printFunctions(data)
+  #global errorsFound
+  #if (not errorsFound): printFunctions(data)
 
 if __name__ == "__main__":
   import sys
