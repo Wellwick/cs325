@@ -7,3 +7,7 @@ for i = 2, 10 do
 end
 
 function getThing(x) return "hi", 3, nil end
+
+
+print(getThing(2))
+

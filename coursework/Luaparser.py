@@ -11,6 +11,9 @@
 import re
 import shlex
 
+#variable names can replace function names in the normal execution process, it's weird
+#could create copies of the variable/function name arrays at the beginning of chunks that can be overridden
+
 #variable name list
 varNames = []
 #function name list
@@ -21,6 +24,10 @@ last = re.compile('return|break')
 #a variable or function name must be alphanumeric but not containing only numbers and cannot be a keyword
 varFuncName = '[0-9]*[a-zA-Z_](\w)*'
 Name = re.compile(varFuncName)
+Number = re.compile('([0-9]+(\.[0-9]*)?)|(\.[0-9]+)')
+String = re.compile('(\".*\")|(\'.*\')')
+Binop = re.compile('(\+)|(\-)|(\*)|(\/)|(\^)|(\%)|(\.\.)|(\<)|(\<\=)|(\>)|(\>\=)|(\=\=)|(\~\=)|(and)|(or)')
+Unop = re.compile('(\-)|(not)|(\#)')
 func = re.compile('function( )*'+varFuncName+'(('+varFuncName+',( )*)*'+varFuncName+')')
 
 #counter for keeping track of loopDepth
@@ -98,28 +105,30 @@ def explist(token, data, count):
   x = ""
   while (token != None and token != ''):
     #need to break up the string
-    if re.match("'", token) or re.match('"', token):
-      String(token[1:-1])
-      '''
-      #got to make sure when we find another ' that it isn't an escaped character
-      searching = True
-      while (searching):
-        index = xList[charCount:].find('\'')
-        if (index == -1):
-          checkErrors()
-          print("Expected \' to close string on line ", count+1)
-          return
+    if not exp(token, data, count):
+      #error message is return exp specific
+      return count
+    
+    '''
+    #got to make sure when we find another ' that it isn't an escaped character
+    searching = True
+    while (searching):
+      index = xList[charCount:].find('\'')
+      if (index == -1):
+        checkErrors()
+        print("Expected \' to close string on line ", count+1)
+        return
+      else:
+        if xList[charCount:].find('\\') == index-1 and index != 0:
+          #we have found an escaped character
+          charCount = charCount + index + 1
         else:
-          if xList[charCount:].find('\\') == index-1 and index != 0:
-            #we have found an escaped character
-            charCount = charCount + index + 1
-          else:
-            #have reached the end of the string
-            x = xList[1:charCount+index]
-            String(x, count)
-            xList = xList[charCount+index+1:]
-            searching = False
-      '''
+          #have reached the end of the string
+          x = xList[1:charCount+index]
+          String(x, count)
+          xList = xList[charCount+index+1:]
+          searching = False
+    '''
     
     #after the checking is finished, clean for next round of exp() removal
     lastToken = token
@@ -132,7 +141,6 @@ def explist(token, data, count):
       err = "Expected , after " + lastToken
       error(err, count)
       return count
-    #exp(x, count)
   
   #in the case that the while loop ends instead of returning then
   #have reached nothing when expecting another token
@@ -142,32 +150,42 @@ def explist(token, data, count):
 
 def funcname(data, count):
   token = data[count].get_token()
-  if Name.match(token):
-    nujweqios =2
-  else:
+  if not Name.match(token):
     checkErrors()
     error("", count)
   return count
   #Name() {',' Name()} [':' Name()]
 
-def String(x):
-  #shouldn't even be needed
-  p=1
-
-def exp(x, count):
-  p=1
+def exp(token, data, count):
+  nextToken = data[count].get_token()
+  data[count].push_token(nextToken)
+  if Binop.match(nextToken):
+    step = exp(token, [], count)
+    data[count].get_token() #pulling binop back out again
+    return step and exp(data[count].get_token(), data, count)
+  if token == "nil" or token == "false" or token == "true" or Number.match(token) or String.match(token) or token == "'...'":
+      return True
+  elif Unop.match(token):
+    if exp(data[count].get_token(), data, count):
+      return True
+    else:
+      error("Expected expression after " + token, count)
+      return False
+  else:
+    return False
+      
   '''
-  nil or
-  false or
-  true or
-  Number() or
-  String() or
-  '...' or 
+  nil or                    DONE
+  false or                  DONE
+  true or                   DONE
+  Number() or               DONE
+  String() or               DONE
+  '...' or                  DONE
   function() or
   prefixexp() or
   tableconstructor() or
   exp() binop() exp() or
-  unop() exp()
+  unop() exp()              DONE
 
 
 def stat():
@@ -232,14 +250,6 @@ def field():
 def fieldsep():
   ',' or
   ';'
-
-def binop():
-  '+' or '-' or '*' or '/' or '^' or '%' or '..' or
-  '<' or '<=' or '>' or '>=' or '==' or '~=' or
-  and or or
-
-def unop():
-  '-' or not or '#'
 '''
 
 def printFunctions(data):
