@@ -6,4 +6,4 @@ for i = 2, 10 do
   end
 end
 
-return "hi", 3, nil
+function getThing(x) return "hi", 3, nil end

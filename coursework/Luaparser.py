@@ -20,7 +20,7 @@ funcNames = [["factorial", "n"], ["add1", "x"], ["pasta"], ["new", "pi", "cheese
 last = re.compile('return|break')
 #a variable or function name must be alphanumeric but not containing only numbers and cannot be a keyword
 varFuncName = '[0-9]*[a-zA-Z_](\w)*'
-var = re.compile(varFuncName)
+Name = re.compile(varFuncName)
 func = re.compile('function( )*'+varFuncName+'(('+varFuncName+',( )*)*'+varFuncName+')')
 
 #counter for keeping track of loopDepth
@@ -28,11 +28,14 @@ loopDepth = 0
 errorsFound = False
 
 
-def checkErrors():
+def error(string, count):
   global errorsFound
   if (not errorsFound):
     errorsFound = True
     print("Errors found")
+   
+  #error is passed in as a string with the line number
+  print("Error on line " + count + ": " + string)
 
 def chunk(data, count):
   #a chunk can be broken on return or break
@@ -45,7 +48,14 @@ def chunk(data, count):
       count = laststat(token, data, count) + 1
       statementsExecuting = False
     else:
-      count = stat(token, data, count) + 1
+      count = stat(token, data, count)
+      token = data[count].get_token()
+      #if we encounter a ; have to carry on parsing on the same line
+      if token != ';':
+        #time to do another statement on the same line
+        count = count + 1
+      
+        
   return count
 
 def block(data, count):
@@ -55,6 +65,11 @@ def stat(token, data, count):
   if re.match('function', token):
     #function funcname() funcbody()
     count = funcname(data, count)
+    token = data[count].get_token()
+    if token != None or token != '':
+      #funcbody starts on the same line!
+      #push the token back on so we can carry on
+      data[count].push_token(token)
   return count
 
 def laststat(token, data, count): 
@@ -65,12 +80,10 @@ def laststat(token, data, count):
   if re.match('break', token) and loopDepth == 0:
     #don't decrease loopDepth until we find an end
     if nextToken != None and nextToken != '':
-      checkErrors()
-      print("unexpected value after break")
+      error("unexpected value after break", count)
       return count
     if loopDepth == 0:
-      checkErrors()
-      print("break encoutered not in a loop")
+      error("break encoutered not in a loop", count)
       return count
   else: #we are matching with 'return'
     if nextToken != None and nextToken != '':
@@ -126,6 +139,16 @@ def explist(token, data, count):
   print("Expected another value after final ,")
   #{exp() ','} exp()
 
+def funcname(data, count):
+  token = data[count].get_token()
+  if Name.match(token):
+    nujweqios =2
+  else:
+    checkErrors()
+    error("", count)
+  return count
+  #Name() {',' Name()} [':' Name()]
+
 def String(x):
   #shouldn't even be needed
   p=1
@@ -161,8 +184,6 @@ def stat():
   local function Name() funcbody() or
   local namelist() ['=' explist()]
 
-def funcname():
-  Name() {',' Name()} [':' Name()]
 
 def varlist():
   var() {',' var()}
@@ -228,38 +249,16 @@ def printFunctions(data):
     for y in x[2:]:
       string = string + ", " + y
     print(string)
-  
-  '''
-  if re.match('function', x.get_token()):
-    funcString = "Function: " + x.get_token() + ", "
-    x.get_token()
-    string = x.get_token()
-    
-    if re.match('\)', string):
-      #no parameters
-      print("No parameters")
-      return
-    
-    getParameters = True
-    while(getParameters):
-      if (not re.match(',', x.get_token())): getParameters = False
-      else: string = string + ", " + x.get_token()
-    print(funcString + "Parameters: " + string)
-    '''
 
 def parse(filename):
   
   with open(filename) as f:
     data = f.readlines()
   
-  #break each line by whitespace characters
-  data = [x.split(';') for x in data]
   strippedData = []
   for y in data:
-    for x in y:
-      x = x.strip( )
-      x = shlex.shlex(x)
-      strippedData.extend([x])
+      y = shlex.shlex(y)
+      strippedData.extend([y])
   
   data = strippedData
   
