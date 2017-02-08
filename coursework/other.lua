@@ -9,5 +9,5 @@ end
 function getThing(x) return "hi", 3, nil end
 
 
-print(getThing(2))
+print(getThing(2)) print("Hello, this is totally allowed, kill me now")
 

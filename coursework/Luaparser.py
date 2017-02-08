@@ -72,12 +72,8 @@ def block(data, count):
 def stat(token, data, count):
   if re.match('function', token):
     #function funcname() funcbody()
-    count = funcname(data, count)
-    token = data[count].get_token()
-    if token != None or token != '':
-      #funcbody starts on the same line!
-      #push the token back on so we can carry on
-      data[count].push_token(token)
+    functionName = funcname(data, count)
+    count = funcbody(functionName, data, count)
   return count
 
 def laststat(token, data, count): 
@@ -149,12 +145,21 @@ def explist(token, data, count):
   #{exp() ','} exp()
 
 def funcname(data, count):
+  # can just be a sequence of names
   token = data[count].get_token()
   if not Name.match(token):
     checkErrors()
     error("", count)
-  return count
+    
+  return token
   #Name() {',' Name()} [':' Name()]
+
+def funcbody(funcName, data, count):
+  newList = []
+  newList.extend(funcName)
+  token = data.get_token()
+  
+  #'(' [parlist()] ')' block() end
 
 def exp(token, data, count):
   nextToken = data[count].get_token()
@@ -232,9 +237,6 @@ def args():
 
 def function():
   function funcbody()
-
-def funcbody():
-  '(' [parlist()] ')' block() end
 
 def tableconstructor():
   '{' [fieldlist()] '}'
