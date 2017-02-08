@@ -3,7 +3,7 @@ function factorial(n)
   for i = 2, n do
     x = x * i
   end
-  return x
+  return '$ and #'
 endd
 
 function add1(x)

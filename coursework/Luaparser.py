@@ -14,7 +14,7 @@ import shlex
 #variable name list
 varNames = []
 #function name list
-funcNames = []
+funcNames = [["factorial", "n"], ["add1", "x"], ["pasta"], ["new", "pi", "cheese", "bread"]]
 
 #regular expressions used 
 last = re.compile('return|break')
@@ -42,49 +42,52 @@ def chunk(data, count):
     token = data[count].get_token()
     print(token)
     if last.match(token):
-      laststat(token, data[count])
-      count = count + 1
+      count = laststat(token, data, count) + 1
       statementsExecuting = False
     else:
-      stat(data, count)
-      count = count + 1
+      count = stat(token, data, count) + 1
   return count
 
 def block(data, count):
   return chunk(data, count)
 
-def stat(data, count):
-  
+def stat(token, data, count):
+  if re.match('function', token):
+    #function funcname() funcbody()
+    count = funcname(data, count)
   return count
 
-def laststat(token, data): 
+def laststat(token, data, count): 
   print("LastStat: " + token)
   
-  nextToken = data.get_token()
+  nextToken = data[count].get_token()
   
-  if re.match('break', token) && loopDepth == 0:
+  if re.match('break', token) and loopDepth == 0:
     #don't decrease loopDepth until we find an end
     if nextToken != None and nextToken != '':
       checkErrors()
       print("unexpected value after break")
-    
+      return count
     if loopDepth == 0:
       checkErrors()
       print("break encoutered not in a loop")
+      return count
   else: #we are matching with 'return'
     if nextToken != None and nextToken != '':
       #if this occurs then we are dealing with a variable name most likely
-      explist(nextToken, data)
+      return explist(nextToken, data, count)
+    else:
+      return count
 
-def explist(token, data):
+def explist(token, data, count):
   #apparently it is fully possible to return several different types in a list!
   x = ""
-  while (len(xList) > 0):
+  while (token != None and token != ''):
     #need to break up the string
-    if re.match('\'', xList):
+    if re.match("'", token) or re.match('"', token):
+      String(token[1:-1])
+      '''
       #got to make sure when we find another ' that it isn't an escaped character
-      charCount = 1
-      x = xList[:charCount]
       searching = True
       while (searching):
         index = xList[charCount:].find('\'')
@@ -102,37 +105,28 @@ def explist(token, data):
             String(x, count)
             xList = xList[charCount+index+1:]
             searching = False
-    elif re.match('\"', xList):
-      #got to make sure when we find another " that it isn't an escaped character
-      charCount = 1
-      x = xList[:charCount]
-      searching = True
-      while (searching):
-        index = xList[charCount:].find('\"')
-        if (index == -1):
-          checkErrors()
-          print("Expected \" to close string on line ", count+1)
-          return
-        else:
-          if xList[charCount:].find('\\') == index-1 and index != 0:
-            #we have found an escaped character
-            charCount = charCount + index + 1
-          else:
-            #have reached the end of the string
-            x = xList[1:charCount+index]
-            String(x, count)
-            xList = xList[charCount+index+1:]
-            searching = False
+      '''
     
     #after the checking is finished, clean for next round of exp() removal
-    xList = xList.strip( )
-    if(re.match(',', xList)):
-         xList = xList[1:]
-    xList = xList.strip( )
+    lastToken = token
+    token = data[count].get_token()
+    if(re.match(',', token)):
+      token = data[count].get_token()
+    elif token == None or token == '':
+      return count
+    else:
+      checkErrors()
+      print("Expected , after ", lastToken)
+      return count
     #exp(x, count)
+  
+  #in the case that the while loop ends instead of returning then
+  #have reached nothing when expecting another token
+  checkErrors()
+  print("Expected another value after final ,")
   #{exp() ','} exp()
 
-def String(x, count):
+def String(x):
   #shouldn't even be needed
   p=1
 
@@ -227,22 +221,31 @@ def unop():
 '''
 
 def printFunctions(data):
-    for x in data:
-        if re.match('function', x.get_token()):
-            funcString = "Function: " + x.get_token() + ", "
-            x.get_token()
-            string = x.get_token()
-            
-            if re.match('\)', string):
-              #no parameters
-              print("No parameters")
-              return
-            
-            getParameters = True
-            while(getParameters):
-              if (not re.match(',', x.get_token())): getParameters = False
-              else: string = string + ", " + x.get_token()
-            print(funcString + "Parameters: " + string)
+  for x in funcNames:
+    string = "Function: " + x[0]
+    if len(x) > 1:
+      string = string + ", Parameters: " + x[1]
+    for y in x[2:]:
+      string = string + ", " + y
+    print(string)
+  
+  '''
+  if re.match('function', x.get_token()):
+    funcString = "Function: " + x.get_token() + ", "
+    x.get_token()
+    string = x.get_token()
+    
+    if re.match('\)', string):
+      #no parameters
+      print("No parameters")
+      return
+    
+    getParameters = True
+    while(getParameters):
+      if (not re.match(',', x.get_token())): getParameters = False
+      else: string = string + ", " + x.get_token()
+    print(funcString + "Parameters: " + string)
+    '''
 
 def parse(filename):
   
