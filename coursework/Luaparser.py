@@ -35,7 +35,8 @@ def error(string, count):
     print("Errors found")
    
   #error is passed in as a string with the line number
-  print("Error on line " + count + ": " + string)
+  count = count + 1 #increase by one since originally accessing array
+  print("Error on line ",count,": " + string)
 
 def chunk(data, count):
   #a chunk can be broken on return or break
@@ -89,8 +90,8 @@ def laststat(token, data, count):
     if nextToken != None and nextToken != '':
       #if this occurs then we are dealing with a variable name most likely
       return explist(nextToken, data, count)
-    else:
-      return count
+  
+  return count
 
 def explist(token, data, count):
   #apparently it is fully possible to return several different types in a list!
@@ -128,15 +129,15 @@ def explist(token, data, count):
     elif token == None or token == '':
       return count
     else:
-      checkErrors()
-      print("Expected , after ", lastToken)
+      err = "Expected , after " + lastToken
+      error(err, count)
       return count
     #exp(x, count)
   
   #in the case that the while loop ends instead of returning then
   #have reached nothing when expecting another token
-  checkErrors()
-  print("Expected another value after final ,")
+  error("Expected another value after final ,", count)
+  return count
   #{exp() ','} exp()
 
 def funcname(data, count):
