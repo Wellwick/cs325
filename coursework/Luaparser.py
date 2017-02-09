@@ -157,8 +157,8 @@ def funcname(data, count):
 def funcbody(funcName, data, count):
   newList = []
   newList.extend(funcName)
-  token = data.get_token()
-  
+  token = data[count].get_token()
+  return count
   #'(' [parlist()] ')' block() end
 
 def exp(token, data, count):
@@ -168,8 +168,18 @@ def exp(token, data, count):
     step = exp(token, [], count)
     data[count].get_token() #pulling binop back out again
     return step and exp(data[count].get_token(), data, count)
-  if token == "nil" or token == "false" or token == "true" or Number.match(token) or String.match(token) or token == "'...'":
+  if token == "nil" or token == "false" or token == "true" or Number.match(token) or token == "'...'":
       return True
+  elif String.match(token):
+      #must check penultimate character for escaped of string char
+      if token[-2:-1] == '\\':
+          #have to iterate until we find the initial character
+          char = token[0:1]
+          while token[-2:] == "\\"+char or token[-1:] != char:
+              token = data[count].get_token()
+              if token == None or token == '':
+                  error("Expected closing of string", count)
+                  return False
   elif Unop.match(token):
     if exp(data[count].get_token(), data, count):
       return True
