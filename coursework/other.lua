@@ -2,7 +2,7 @@ for i = 2, 10 do
   for j = 3, 10 do
     break
     break
-    x = 3
+    x    ""
   end
 end
 
@@ -20,3 +20,13 @@ z
 3
 
 print(z)
+
+
+function bread(x) print(x+1) end
+
+bread(10)
+
+function bread(x,y) print("Hello ",y) end
+
+bread(10)
+bread(10,12)

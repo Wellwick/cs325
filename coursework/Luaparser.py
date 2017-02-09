@@ -18,11 +18,9 @@ import shlex
 data = []
 count = 0
 
-
-#variable name list
-varNames = []
+#variable name list is NOT necessary, uninitiated variables are given the nil value and catching TypeErrors is outside of scope
 #function name list
-funcNames = [["factorial", "n"], ["add1", "x"], ["pasta"], ["new", "pi", "cheese", "bread"]]
+funcNames = [[["factorial"], "n"], [["add1"], "x"], [["pasta"]], [["new", "riley", ":milo"], "pi", "cheese", "bread"]]
 
 #regular expressions used 
 last = re.compile('return|break')
@@ -33,6 +31,7 @@ Number = re.compile('([0-9]+(\.[0-9]*)?)|(\.[0-9]+)')
 String = re.compile('(\".*\")|(\'.*\')')
 Binop = re.compile('(\+)|(\-)|(\*)|(\/)|(\^)|(\%)|(\.\.)|(\<)|(\<\=)|(\>)|(\>\=)|(\=\=)|(\~\=)|(and)|(or)')
 Unop = re.compile('(\-)|(not)|(\#)')
+Ellipse = re.compile('\.\.\.')
 func = re.compile('function( )*'+varFuncName+'(('+varFuncName+',( )*)*'+varFuncName+')')
 
 #counter for keeping track of loopDepth
@@ -60,6 +59,7 @@ def getNextToken():
     count = count + 1
     if count > len(data):
       #this means we have reached the end of the file
+      count = count - 1
       return False
     token = data[count].get_token()
   
@@ -81,26 +81,23 @@ def viewNextToken():
   data[newCount].push_token(token)
   return token
 
-def chunk(data, count):
+def chunk():
   #a chunk can be broken on return or break
   #break can only be used when in a loop
   statementsExecuting = True
-  while (statementsExecuting and count < len(data)):
-    token = data[count].get_token()
+  token = True
+  while (token != False):
+    token = getNextToken()
     print(token)
     if last.match(token):
-      count = laststat(token, data, count) + 1
-      statementsExecuting = False
-    else:
-      count = stat(token, data, count)
-      token = data[count].get_token()
-      #if we encounter a ; have to carry on parsing on the same line
-      if token != ';':
-        #time to do another statement on the same line
-        count = count + 1
+      laststat(token)
+    elif re.match('end', token):
+      return token
+    elif not re.match(';', token):
+      # ';' can be skipped, so treating it as an empty statement
+      stat(token)
       
-        
-  return count
+  return False
 
 def block():
   return chunk()
@@ -110,117 +107,118 @@ def stat(token):
     #function funcname() funcbody()
     functionName = funcname()
     count = funcbody(functionName)
-  return count
 
 def laststat(token): 
   print("LastStat: " + token)
-  try:
-    nextToken = getNextToken()
-  except ValueError:
-    #likely occurs because an opened string was not closed
-    #Specification says only expect strings on a single line
-    error("Expected string to close")
   if re.match('break', token) and loopDepth == 0:
     #don't decrease loopDepth until we find an end
     if loopDepth == 0:
       error("break encoutered not in a loop")
   else: #we are matching with 'return'
-    if nextToken != None and nextToken != '':
+    try:
+      nextToken = getNextToken()
       #if this occurs then we are dealing with a variable name most likely
-      return explist(nextToken, data, count)
-  
-  return count
+      explist(nextToken)
+    except ValueError:
+      #likely occurs because an opened string was not closed
+      #Specification says only expect strings on a single line
+      error("Expected string to close")
+      
 
-def explist(token, data, count):
+def explist(token):
   #apparently it is fully possible to return several different types in a list!
-  x = ""
-  while (token != None and token != ''):
+  checkingExpressions = True
+  expectingExpression = False
+  while (checkingExpressions):
     #need to break up the string
-    if not exp(token, data, count):
-      #error message is return exp specific
-      return count
+    if token == False or not exp(token):
+      #reached end of expression list
+      if expectingExpression:
+        error("Expected expression after ,")
+      return
     
     #after the checking is finished, clean for next round of exp() removal
     lastToken = token
-    token = data[count].get_token()
+    token = viewNextToken()
     if(re.match(',', token)):
-      token = data[count].get_token()
-    elif token == None or token == '':
-      return count
+      getNextToken()
+      token = getNextToken()
+      expectingExpression = True
     else:
-      err = "Expected , after " + lastToken
-      error(err, count)
-      return count
+      return
   
-  #in the case that the while loop ends instead of returning then
-  #have reached nothing when expecting another token
-  error("Expected another value after final ,", count)
-  return count
   #{exp() ','} exp()
 
-def funcname(data, count):
+def funcname():
   # can just be a sequence of names
-  token = data[count].get_token()
+  token = getNextToken()
   if not Name.match(token):
-    checkErrors()
-    error("", count)
-    
-  return token
+    error("Expected function name")
+    return [False]
+  else:
+    return [token]
   #Name() {',' Name()} [':' Name()]
 
-def funcbody(funcName, data, count):
+def funcbody(funcName):
   newList = []
-  if funcName[0] != '': #can occur if this a new expression
+  if funcName[0] != False: #can occur if this a new expression
     newList.extend(funcName)
-  token = data[count].get_token()
+  token = getNextToken()
   #expection parenthesis
   if token != '(':
-    error("Expecting parenthesis for function", count)
-    return [count, False]
+    error("Expecting parenthesis for function")
+    return False
   
-  token = data[count].get_token()
+  token = getNextToken()
   if token == None or token == '':
     error("Expecting parenthesis closing for function", count)
-    return [count, False]
+    return False
   elif token != ')':
     #got a parlist()
-    count = parlist(token, newList, data, count)
+    var = parlist(token, newList)
     
   #once this point is reached then the parameters have been entered
-  
-  return count
+  token = block()
+  if token != False and re.match('end', token):
+    return True
   #'(' [parlist()] ')' block() end
 
-def exp(token, data, count):
-  nextToken = viewToken(
-  while (nextToken == None or nextToken == ''):
-    count = count + 1
-    if (count > len(data):
-      count 
-      break
-    nextToken = data[count].get_token()
+def parlist(token, newList):
+  if not Ellipse.match(token):
+    namelist()
+    token = viewNextToken()
+    if token == ',':
+      #we expect the next symbol to be an ellipse
+      getNextToken()
+      token = getNextToken()
+      if not Ellipse.match(token):
+        error("Expecting ellipse at final value")
+
+def namelist():
+  return
   
-  data[count].push_token(nextToken)
+def exp(token):
+  nextToken = viewNextToken()
   
-  if nextToken != None and nextToken != '' and Binop.match(nextToken):
-    step = exp(token, [], count)
-    data[count].get_token() #pulling binop back out again
-    return [step[0], (step[1] and exp(data[count].get_token(), data, count))]
+  if nextToken != False and Binop.match(nextToken):
+    step = exp(token)
+    getNextToken() #pulling binop back out again
+    return (step and exp(getNextToken()))
   if token == "nil" or token == "false" or token == "true" or String.match(token) or Number.match(token) or token == "'...'":
-    return [count, True]
+    return True
   elif Unop.match(token):
-    val = exp(data[count].get_token(), data, count)
-    if val[1]:
-      return [val[0], True]
+    val = exp(getNextToken())
+    if val:
+      return True
     else:
       error("Expected expression after " + token, count)
-      return [val[0], False]
+      return False
   elif re.match(token, "function"):
     #running function funcbody()
-    val = funcbody([''], data, count)
+    val = funcbody([False])
     return val
   else:
-    return [count, False]
+    return False
       
   '''
   nil or                    DONE
@@ -229,11 +227,12 @@ def exp(token, data, count):
   Number() or               DONE
   String() or               DONE
   '...' or                  DONE
-  function() or
+  function() or             DONE?
   prefixexp() or
   tableconstructor() or
   exp() binop() exp() or
   unop() exp()              DONE
+  
 
 
 def stat():
@@ -299,7 +298,12 @@ def fieldsep():
 
 def printFunctions(data):
   for x in funcNames:
-    string = "Function: " + x[0]
+    string = "Function: " + x[0][0]
+    for y in x[0][1:]:
+      if re.match(":", y):
+        string = string + " : " + y[1:]
+      else:
+        string = string + ", " + y
     if len(x) > 1:
       string = string + ", Parameters: " + x[1]
     for y in x[2:]:
