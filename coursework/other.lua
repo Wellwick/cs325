@@ -6,8 +6,17 @@ for i = 2, 10 do
   end
 end
 
-function getThing(x) return "hi", 3, nil end
+function getThing(x) return "hi", 3, nil, function (cheese, cake, bread) 
+    return cheese + cake + bread end end
 
 
 print(getThing(2)) print("Hello, this is totally allowed, kill me now")
 
+z
+
+=
+
+
+3
+
+print(z)

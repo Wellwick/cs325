@@ -14,6 +14,11 @@ import shlex
 #variable names can replace function names in the normal execution process, it's weird
 #could create copies of the variable/function name arrays at the beginning of chunks that can be overridden
 
+#variables to keep track of location of data
+data = []
+count = 0
+
+
 #variable name list
 varNames = []
 #function name list
@@ -34,16 +39,47 @@ func = re.compile('function( )*'+varFuncName+'(('+varFuncName+',( )*)*'+varFuncN
 loopDepth = 0
 errorsFound = False
 
-
-def error(string, count):
+#pops the next token, making it to the right line point
+def error(string):
   global errorsFound
+  global count
   if (not errorsFound):
     errorsFound = True
     print("Errors found")
    
   #error is passed in as a string with the line number
-  count = count + 1 #increase by one since originally accessing array
-  print("Error on line ",count,": " + string)
+  newCount = count + 1 #increase by one since originally accessing array
+  print("Error on line ",newCount,": " + string)
+
+
+def getNextToken():
+  global data
+  global count
+  token = data[count].get_token()
+  while token == None or token == '':
+    count = count + 1
+    if count > len(data):
+      #this means we have reached the end of the file
+      return False
+    token = data[count].get_token()
+  
+  return token
+
+#pops and then replaces the next token, retains same line position
+def viewNextToken():
+  global data
+  global count
+  newCount = count
+  token = data[newCount].get_token()
+  while token == None or token == '':
+    newCount = newCount + 1
+    if newCount > len(data):
+      #this means we have reached the end of the file
+      return False
+    token = data[newCount].get_token()
+  
+  data[newCount].push_token(token)
+  return token
 
 def chunk(data, count):
   #a chunk can be broken on return or break
@@ -66,29 +102,28 @@ def chunk(data, count):
         
   return count
 
-def block(data, count):
-  return chunk(data, count)
+def block():
+  return chunk()
 
-def stat(token, data, count):
+def stat(token):
   if re.match('function', token):
     #function funcname() funcbody()
-    functionName = funcname(data, count)
-    count = funcbody(functionName, data, count)
+    functionName = funcname()
+    count = funcbody(functionName)
   return count
 
-def laststat(token, data, count): 
+def laststat(token): 
   print("LastStat: " + token)
-  
-  nextToken = data[count].get_token()
-  
+  try:
+    nextToken = getNextToken()
+  except ValueError:
+    #likely occurs because an opened string was not closed
+    #Specification says only expect strings on a single line
+    error("Expected string to close")
   if re.match('break', token) and loopDepth == 0:
     #don't decrease loopDepth until we find an end
-    if nextToken != None and nextToken != '':
-      error("unexpected value after break", count)
-      return count
     if loopDepth == 0:
-      error("break encoutered not in a loop", count)
-      return count
+      error("break encoutered not in a loop")
   else: #we are matching with 'return'
     if nextToken != None and nextToken != '':
       #if this occurs then we are dealing with a variable name most likely
@@ -135,28 +170,57 @@ def funcname(data, count):
 
 def funcbody(funcName, data, count):
   newList = []
-  newList.extend(funcName)
+  if funcName[0] != '': #can occur if this a new expression
+    newList.extend(funcName)
   token = data[count].get_token()
+  #expection parenthesis
+  if token != '(':
+    error("Expecting parenthesis for function", count)
+    return [count, False]
+  
+  token = data[count].get_token()
+  if token == None or token == '':
+    error("Expecting parenthesis closing for function", count)
+    return [count, False]
+  elif token != ')':
+    #got a parlist()
+    count = parlist(token, newList, data, count)
+    
+  #once this point is reached then the parameters have been entered
+  
   return count
   #'(' [parlist()] ')' block() end
 
 def exp(token, data, count):
-  nextToken = data[count].get_token()
+  nextToken = viewToken(
+  while (nextToken == None or nextToken == ''):
+    count = count + 1
+    if (count > len(data):
+      count 
+      break
+    nextToken = data[count].get_token()
+  
   data[count].push_token(nextToken)
+  
   if nextToken != None and nextToken != '' and Binop.match(nextToken):
     step = exp(token, [], count)
     data[count].get_token() #pulling binop back out again
-    return step and exp(data[count].get_token(), data, count)
+    return [step[0], (step[1] and exp(data[count].get_token(), data, count))]
   if token == "nil" or token == "false" or token == "true" or String.match(token) or Number.match(token) or token == "'...'":
-    return True
+    return [count, True]
   elif Unop.match(token):
-    if exp(data[count].get_token(), data, count):
-      return True
+    val = exp(data[count].get_token(), data, count)
+    if val[1]:
+      return [val[0], True]
     else:
       error("Expected expression after " + token, count)
-      return False
+      return [val[0], False]
+  elif re.match(token, "function"):
+    #running function funcbody()
+    val = funcbody([''], data, count)
+    return val
   else:
-    return False
+    return [count, False]
       
   '''
   nil or                    DONE
@@ -214,7 +278,7 @@ def args():
   tableconstructor() or
   String()
 
-def function():
+def function():         <In Progress>
   function funcbody()
 
 def tableconstructor():
@@ -243,6 +307,8 @@ def printFunctions(data):
     print(string)
 
 def parse(filename):
+  global data
+  global count
   
   with open(filename) as f:
     data = f.readlines()
@@ -254,7 +320,7 @@ def parse(filename):
   
   data = strippedData
   
-  print(block(data, 0))
+  print(block())
   
   #runs if no errors are detected
   global errorsFound
