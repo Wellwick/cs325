@@ -3,7 +3,7 @@ function factorial(n)
   for i = 2, n do
     x = x * i
   end
-  return "x \" words are+fun"
+  return "x \" words are+fun
 endd
 
 function add1(x)

@@ -105,27 +105,6 @@ def explist(token, data, count):
       #error message is return exp specific
       return count
     
-    '''
-    #got to make sure when we find another ' that it isn't an escaped character
-    searching = True
-    while (searching):
-      index = xList[charCount:].find('\'')
-      if (index == -1):
-        checkErrors()
-        print("Expected \' to close string on line ", count+1)
-        return
-      else:
-        if xList[charCount:].find('\\') == index-1 and index != 0:
-          #we have found an escaped character
-          charCount = charCount + index + 1
-        else:
-          #have reached the end of the string
-          x = xList[1:charCount+index]
-          String(x, count)
-          xList = xList[charCount+index+1:]
-          searching = False
-    '''
-    
     #after the checking is finished, clean for next round of exp() removal
     lastToken = token
     token = data[count].get_token()
@@ -164,22 +143,12 @@ def funcbody(funcName, data, count):
 def exp(token, data, count):
   nextToken = data[count].get_token()
   data[count].push_token(nextToken)
-  if Binop.match(nextToken):
+  if nextToken != None and nextToken != '' and Binop.match(nextToken):
     step = exp(token, [], count)
     data[count].get_token() #pulling binop back out again
     return step and exp(data[count].get_token(), data, count)
-  if token == "nil" or token == "false" or token == "true" or Number.match(token) or token == "'...'":
-      return True
-  elif String.match(token):
-      #must check penultimate character for escaped of string char
-      if token[-2:-1] == '\\':
-          #have to iterate until we find the initial character
-          char = token[0:1]
-          while token[-2:] == "\\"+char or token[-1:] != char:
-              token = data[count].get_token()
-              if token == None or token == '':
-                  error("Expected closing of string", count)
-                  return False
+  if token == "nil" or token == "false" or token == "true" or String.match(token) or Number.match(token) or token == "'...'":
+    return True
   elif Unop.match(token):
     if exp(data[count].get_token(), data, count):
       return True
@@ -280,7 +249,7 @@ def parse(filename):
   
   strippedData = []
   for y in data:
-      y = shlex.shlex(y)
+      y = shlex.shlex(y, posix=True)
       strippedData.extend([y])
   
   data = strippedData
