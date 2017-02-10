@@ -32,7 +32,7 @@ String = re.compile('(\".*\")|(\'.*\')')
 Binop = re.compile('(\+)|(\-)|(\*)|(\/)|(\^)|(\%)|(\.\.)|(\<)|(\<\=)|(\>)|(\>\=)|(\=\=)|(\~\=)|(and)|(or)')
 Unop = re.compile('(\-)|(not)|(\#)')
 Ellipse = re.compile('\.\.\.')
-func = re.compile('function( )*'+varFuncName+'(('+varFuncName+',( )*)*'+varFuncName+')')
+LongString = re.compile('\[(=)*\[')
 
 #counter for keeping track of loopDepth
 loopDepth = 0
@@ -310,6 +310,75 @@ def printFunctions(data):
       string = string + ", " + y
     print(string)
 
+def parseLongStrings(data):
+  #method to take long strings and convert into (possibly multiple) normal strings
+  global count
+  count = 0
+  checked = False
+  while (count < len(data)):
+    if LongString.search(data[count]) and not checked:
+      #should step through, making sure this is not part of a string
+      checked = True
+      thisLine = data[count]
+      index = 0
+      outerCatch = False
+      inString = False
+      while index < len(data[count]):
+        line = data[count]
+        if inString != False:
+          while line[index] == '\\' and index < len(line):
+            index = index + 2
+          
+          if index < len(line):
+            if line[index] == inString:
+              inString = False
+        elif line[index] == "'" or line[index] == '"':
+          inString = line[index]
+        elif LongString.match(line[index:]):
+          outerCatch = '\]'
+          startIndex = index
+          index = index + 1
+          
+          while line[index] == '=':
+            outerCatch = outerCatch + '='
+            index = index + 1
+          
+          outerCatch = outerCatch + '\]'
+          outerExpr = re.compile(outerCatch)
+          index = index + 1
+          #need to save string up until this point
+          thisLine = line[:startIndex] + '"'
+          
+          while index < len(line):
+            if line[index] == '"':
+              thisLine = thisLine + "\\\""
+            elif outerExpr.match(line[index:]):
+              thisLine = thisLine + '"'
+              index = index + len(outerCatch) - 2
+              thisLine = thisLine + line[index:]
+              outerCatch = False
+              break
+            else:
+              thisLine = thisLine + line[index]
+            index = index + 1
+          
+          if outerCatch != False:
+            error("Expected " + outerCatch + " by the end of the line")
+          else:
+            #need to save the data
+            data[count] = thisLine
+            checked = False
+            print(thisLine)
+            break
+          #no change to count so that it checks through another time in case there are other 
+          #long strings
+            
+        index = index + 1
+    else:
+      count = count + 1
+  
+  return data
+
 def parse(filename):
   global data
   global count
@@ -317,6 +386,8 @@ def parse(filename):
   with open(filename) as f:
     data = f.readlines()
   
+  data = parseLongStrings(data)
+  count = 0
   strippedData = []
   for y in data:
       y = shlex.shlex(y, posix=True)

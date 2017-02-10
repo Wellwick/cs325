@@ -9,6 +9,7 @@ end
 function getThing(x) return "hi", 3, nil, function (cheese, cake, bread) 
     return cheese + cake + bread end end
 
+  pi = [==[    " asdasd " " ]==] + [====[ [===[ ]===] [===[ ]====] chicken = 3
 
 print(getThing(2)) print("Hello, this is totally allowed, kill me now")
 
