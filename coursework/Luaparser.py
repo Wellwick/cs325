@@ -45,7 +45,7 @@ def error(string):
    
   #error is passed in as a string with the line number
   newCount = count + 1 #increase by one since originally accessing array
-  print("Error on line ",newCount,": " + string)
+  print("Error on line",newCount,": " + string)
 
 
 def getNextToken():
@@ -92,7 +92,7 @@ def chunk():
     print(token)
     if token != False and last.match(token):
       laststat(token)
-    elif token != False and token == 'end':
+    elif token != False and (token == 'end' or token == 'elseif' or token == 'else'):
       return token
     elif token != False and not re.match(';', token):
       # ';' can be skipped, so treating it as an empty statement
@@ -113,7 +113,7 @@ def stat():
   if exp() then block() 
   {elseif exp() then block()} #potentially repeats
   [else block()] end or
-  for Name() '=' exp ',' exp [',' exp] do block() end or
+  for Name() '=' exp ',' exp [',' exp] do block() end or    DONE!
   for namelist() in explist() do block() end or
   function funcname() funcbody() or
   local function Name() funcbody() or
@@ -178,6 +178,56 @@ def stat(token):
       elif nextToken == ',' or nextToken == 'in':
         #expecting namelist in explist
         x=2
+  elif token == 'do':
+    #process a block and corresponding end
+    token = block()
+    if token == False or token != 'end':
+      error("Expencted end to finish do block")
+  elif token == 'if':
+    #next comes an expression
+    token = getNextToken()
+    if token == False or not exp(token, False):
+      error("Was expecting expression after 'if'")
+      return
+    
+    token = getNextToken()
+    if token == False or token != 'then':
+      error("Was expecting 'then' after expression in 'if' clause")
+      return
+    
+    val = block()
+    if val == False:
+      error("Was expecting 'end' for if statement")
+      return
+    elif val == 'end':
+      return
+    
+    while val == 'elseif':
+      #perform this on a loop if elseifs continue to appear
+      token = getNextToken()
+      if token == False or not exp(token, False):
+        error("Was expecting expression after 'elseif'")
+        return
+      
+      token = getNextToken()
+      if token == False or token != 'then':
+        error("Was expecting 'then' after expression in 'elseif' clause")
+        return
+      val = block()
+      if val == False:
+        error("Was expecting 'end' for if statement")
+        return
+      elif val == 'end':
+        return
+      
+    if val == 'else':
+      val = block()
+      if val == False:
+        error("Was expecting 'end' for if statement")
+        return
+      elif val == 'end':
+        return
+  elif token == 'while':
   elif token == '(' or (Name.match(token) and not Keyword.match(token)):
     #we are looking at varlist or a functioncall, both of which can reach out to prefixexp
     value = prefixexp(token)
@@ -198,6 +248,8 @@ def stat(token):
     elif value != 'funccall':
       #expected a function call
       error("Expected a function call or variable assignment")
+  else:
+    error("Was expecting statement to begin")
 
 def laststat(token):
   print("LastStat: " + token)
@@ -271,6 +323,9 @@ def funcbody(funcName):
     
   #once this point is reached then the parameters have been entered
   token = block()
+  if funcName[0] == False:
+    funcName = [""]
+  
   if token != False and token == 'end':
     print("Function " + funcName[0] + " was completed")
     return True
