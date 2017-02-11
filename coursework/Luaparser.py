@@ -1,9 +1,4 @@
 #time to go to work
-# keywords:
-# and	break	do	else	elseif
-# end	false	for	function	if
-# in	local	nil	not	or
-# repeat	return	then	true	until	while
 
 #Can either do a backtracking parser or a predictive parser
 #Predictive probably the best choice but requires look ahead
@@ -22,10 +17,12 @@ count = 0
 #function name list
 funcNames = [[["factorial"], "n"], [["add1"], "x"], [["pasta"]], [["new", "riley", ":milo"], "pi", "cheese", "bread"]]
 
+
 #regular expressions used 
 last = re.compile('return|break')
-#a variable or function name must be alphanumeric but not containing only numbers and cannot be a keyword
-varFuncName = '[0-9]*[a-zA-Z_](\w)*'
+#a variable or function name must be alphanumeric but not containing only numbers and cannot be a keyword, cannot start with a digit
+Keyword = re.compile('(and)|(break)|(do)|(else)|(elseif)|(end)|(false)|(for)|(function)|(if)|(in)|(local)|(nil)|(not)|(or)|(repeat)|(return)|(then)|(true)|(until)|(while)')
+varFuncName = '[a-zA-Z_](\w)*'
 Name = re.compile(varFuncName)
 Number = re.compile('([0-9]+(\.[0-9]*)?)|(\.[0-9]+)')
 String = re.compile('(\".*\")|(\'.*\')')
@@ -103,14 +100,68 @@ def block():
   return chunk()
 
 def stat(token):
+  global loopDepth
   if re.match('function', token):
     #function funcname() funcbody()
+    print("FOUND FUNCTION")
     functionName = funcname()
     count = funcbody(functionName)
+  elif token == 'for':
+    token = getNextToken()
+    if Name.match(token) and not Keyword.match(token):
+      nextToken = viewNextToken()
+      if nextToken == '=':
+        #looking for exp, exp, [, exp]
+        getNextToken()
+        token = getNextToken()
+        if not exp(token):
+          error("Expected expression after '=' in for statement")
+          return
+        
+        token = getNextToken()
+        if token != ',':
+          error("Expected ',' after expression in for statement")
+          return
+        
+        token = getNextToken()
+        if not exp(token):
+          error("Expected expression after ',' in for statement")
+          return
+        
+        token = getNextToken()
+        if token == ',':
+          #want another expression
+          token = getNextToken()
+          if not exp(token):
+            error("Expected expression after ',' in for statement")
+            return
+          
+          token = getNextToken()
+          #continue on as before
+        
+        if token != 'do':
+          error("Expected 'do' to lead into for block")
+          return
+        
+        #need to increase loopDepth
+        loopDepth = loopDepth + 1
+        token = block()
+        
+        if token == False or token != 'end':
+          #failed at producing for loop
+          error("Expected end to catch bottom of for loop")
+          
+        #decrease loopDepth again
+        loopDepth = loopDepth - 1
+      elif nextToken == ',' or nextToken == 'in':
+        #expecting namelist in explist
+        
+        
 
 def laststat(token): 
+  global loopDepth
   print("LastStat: " + token)
-  if re.match('break', token) and loopDepth == 0:
+  if re.match('break', token):
     #don't decrease loopDepth until we find an end
     if loopDepth == 0:
       error("break encoutered not in a loop")
@@ -152,7 +203,7 @@ def explist(token):
 def funcname():
   # can just be a sequence of names
   token = getNextToken()
-  if not Name.match(token):
+  if not Name.match(token) or Keyword.match(token):
     error("Expected function name")
     return [False]
   else:
@@ -185,17 +236,27 @@ def funcbody(funcName):
 
 def parlist(token, newList):
   if not Ellipse.match(token):
-    namelist()
-    token = viewNextToken()
-    if token == ',':
+    token = namelist(token)
+    if token != False and token == ',':
       #we expect the next symbol to be an ellipse
-      getNextToken()
       token = getNextToken()
       if not Ellipse.match(token):
         error("Expecting ellipse at final value")
 
-def namelist():
-  return
+def namelist(token):
+  while Name.match(token):
+    token = getNextToken()
+    if token != ',':
+      #reached the end of the namelist
+      return token
+    else:
+      token = getNextToken()
+  
+  #if it is possible to escape the while list, there has been an error 
+  #unless the token is an ellipse
+  if not Ellipse.match(token):
+    error("Expected variable name")
+  return token
   
 def exp(token):
   nextToken = viewNextToken()
@@ -364,6 +425,7 @@ def parseLongStrings(data):
           
           if outerCatch != False:
             error("Expected " + outerCatch + " by the end of the line")
+            data[count] = thisLine + '""' #treat as empty string so we can continue parsing
           else:
             #need to save the data
             data[count] = thisLine
@@ -377,6 +439,8 @@ def parseLongStrings(data):
     else:
       count = count + 1
   
+  #reset count before we go back
+  count = 0
   return data
 
 def parse(filename):
@@ -387,7 +451,9 @@ def parse(filename):
     data = f.readlines()
   
   data = parseLongStrings(data)
-  count = 0
+  
+  
+  
   strippedData = []
   for y in data:
       y = shlex.shlex(y, posix=True)
