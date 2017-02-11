@@ -62,6 +62,19 @@ def getNextToken():
       return False
     token = data[count].get_token()
   
+  if token == '<' or token == '=' or token == '>' or token == '~':
+    #try and get another token
+    secondToken = viewNextToken()
+    if secondToken != False and secondToken == '=': #this is a binop
+      secondToken = getNextToken()
+      token = token + secondToken
+  elif token == '.':
+    #may have to pull out another two values
+    secondToken = viewNextToken()
+    if secondToken != False and (secondToken == '..' or secondToken == '.'):
+      secondToken = getNextToken()
+      token = token + secondToken
+  
   return token
 
 #pops and then replaces the next token, retains same line position
@@ -79,8 +92,21 @@ def viewNextToken():
       return False
     token = data[newCount].get_token()
   
+  newToken = token
+  
+  if token == '<' or token == '=' or token == '>' or token == '~':
+    #try and get another token
+    secondToken = viewNextToken()
+    if secondToken != False and secondToken == '=': #this is a binop
+      newToken = token + secondToken
+  elif token == '.':
+    #may have to pull out another two values
+    secondToken = viewNextToken()
+    if secondToken != False and (secondToken == '..' or secondToken == '.'):
+      newToken = token + secondToken
+  
   data[newCount].push_token(token)
-  return token
+  return newToken
 
 def chunk():
   #a chunk can be broken on return or break
@@ -366,9 +392,12 @@ def exp(token, foundBinop):
   
   if nextToken != False and Binop.match(nextToken) and not foundBinop:
     step = exp(token, True)
-    getNextToken() #pulling binop back out again
-    return (step and exp(getNextToken(), False))
-  if token == "nil" or token == "false" or token == "true" or String.match(token) or Number.match(token) or token == "'...'":
+    x = getNextToken() #pulling binop back out again
+    print("Found a binop expression match " + x)
+    newToken = getNextToken()
+    step2 = exp(newToken, False)
+    return (step != False and step2 != False)
+  if token == "nil" or token == "false" or token == "true" or String.match(token) or Number.match(token) or token == "...":
     return True
   elif Unop.match(token):
     val = exp(getNextToken(), False)

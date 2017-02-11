@@ -6,7 +6,7 @@ function factorial(n)
   return "x \" words are+fun   "
 endd
 
-if "pi" then
+if "pi" == 2 then
     y = 3
 elseif true then
     x = 4
