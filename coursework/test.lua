@@ -6,6 +6,12 @@ function factorial(n)
   return "x \" words are+fun   "
 endd
 
+if "pi" then
+    y = 3
+elseif true then
+    x = 4
+end
+
 function add1(x)
   return x+1
 endd

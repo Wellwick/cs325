@@ -192,7 +192,7 @@ def stat(token):
     
     token = getNextToken()
     if token == False or token != 'then':
-      error("Was expecting 'then' after expression in 'if' clause")
+      error("Was expecting 'then' after expression in 'if' clause, instead recieved " + token)
       return
     
     val = block()
@@ -228,6 +228,9 @@ def stat(token):
       elif val == 'end':
         return
   elif token == 'while':
+    #looking for expression followed by 'do'
+    token = getNextToken()
+    
   elif token == '(' or (Name.match(token) and not Keyword.match(token)):
     #we are looking at varlist or a functioncall, both of which can reach out to prefixexp
     value = prefixexp(token)
