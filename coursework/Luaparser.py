@@ -19,17 +19,17 @@ funcNames = [[["factorial"], "n"], [["add1"], "x"], [["pasta"]], [["new", "riley
 
 
 #regular expressions used 
-last = re.compile('return|break')
+last = re.compile('^(return|break)$')
 #a variable or function name must be alphanumeric but not containing only numbers and cannot be a keyword, cannot start with a digit
-Keyword = re.compile('(and)|(break)|(do)|(else)|(elseif)|(end)|(false)|(for)|(function)|(if)|(in)|(local)|(nil)|(not)|(or)|(repeat)|(return)|(then)|(true)|(until)|(while)')
-varFuncName = '[a-zA-Z_](\w)*'
+Keyword = re.compile('^((and)|(break)|(do)|(else)|(elseif)|(end)|(false)|(for)|(function)|(if)|(in)|(local)|(nil)|(not)|(or)|(repeat)|(return)|(then)|(true)|(until)|(while))$')
+varFuncName = '^[a-zA-Z_](\w)*$'
 Name = re.compile(varFuncName)
-Number = re.compile('([0-9]+(\.[0-9]*)?)|(\.[0-9]+)')
-String = re.compile('(\".*\")|(\'.*\')')
-Binop = re.compile('(\+)|(\-)|(\*)|(\/)|(\^)|(\%)|(\.\.)|(\<)|(\<\=)|(\>)|(\>\=)|(\=\=)|(\~\=)|(and)|(or)')
-Unop = re.compile('(\-)|(not)|(\#)')
-Ellipse = re.compile('\.\.\.')
-LongString = re.compile('\[(=)*\[')
+Number = re.compile('^(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))$')
+String = re.compile('^((\".*\")|(\'.*\'))$')
+Binop = re.compile('^((\+)|(\-)|(\*)|(\/)|(\^)|(\%)|(\.\.)|(\<)|(\<\=)|(\>)|(\>\=)|(\=\=)|(\~\=)|(and)|(or))$')
+Unop = re.compile('^((\-)|(not)|(\#))$')
+Ellipse = re.compile('^(\.\.\.)$')
+LongString = re.compile('^(\[(=)*\[)$')
 
 #counter for keeping track of loopDepth
 loopDepth = 0
@@ -47,6 +47,11 @@ def error(string):
   newCount = count + 1 #increase by one since originally accessing array
   print("Error on line",newCount,": " + string)
 
+
+def returnToken(token):
+  global data
+  global count
+  data[count].push_token(token)
 
 def getNextToken():
   global data
@@ -185,25 +190,35 @@ def stat(token):
             return
           
           token = getNextToken()
-          #continue on as before
-        
-        if token != 'do':
-          error("Expected 'do' to lead into for block, instead received " + token)
-          return
-        
-        #need to increase loopDepth
-        loopDepth = loopDepth + 1
-        token = block()
-        
-        if token == False or token != 'end':
-          #failed at producing for loop
-          error("Expected end to catch bottom of for loop")
           
-        #decrease loopDepth again
-        loopDepth = loopDepth - 1
       elif nextToken == ',' or nextToken == 'in':
         #expecting namelist in explist
-        x=2
+        token = namelist(token)
+        if token == False or token != 'in':
+          error("Expected 'in' for 'for' loop, encountered " + token)
+          return
+        
+        token = getNextToken()
+        if explist(token) == False: 
+          return
+        token = getNextToken()
+      
+      #completed the differentiation for 
+      if token != 'do':
+        error("Expected 'do' to lead into for block, instead received " + token)
+        return
+      
+      #need to increase loopDepth
+      loopDepth = loopDepth + 1
+      token = block()
+      
+      if token == False or token != 'end':
+        #failed at producing for loop
+        error("Expected end to catch bottom of for loop")
+      
+      #decrease loopDepth again
+      loopDepth = loopDepth - 1
+    
   elif token == 'do':
     #process a block and corresponding end
     token = block()
@@ -256,9 +271,30 @@ def stat(token):
   elif token == 'while':
     #looking for expression followed by 'do'
     token = getNextToken()
+    if token == False or not exp(token, False):
+      error("Was expecting expression after 'while'")
+      return
+    
+    token = getNextToken()
+    
+    if token == False or token != 'do':
+      error("Was expecting 'do' after expression")
+      return
+    
+    #need to increase loopDepth
+    loopDepth = loopDepth + 1
+    token = block()
+    
+    if token == False or token != 'end':
+      #failed at producing for loop
+      error("Expected end to catch bottom of while loop")
+      
+    #decrease loopDepth again
+    loopDepth = loopDepth - 1
     
   elif token == '(' or (Name.match(token) and not Keyword.match(token)):
     #we are looking at varlist or a functioncall, both of which can reach out to prefixexp
+    #since these are only constructed in stat, import varlist here
     value = prefixexp(token)
     if value == 'var':
       token = getNextToken()
@@ -286,7 +322,7 @@ def laststat(token):
   if re.match('break', token):
     #don't decrease loopDepth until we find an end
     if loopDepth == 0:
-      error("break encoutered not in a loop")
+      error("break encountered not in a loop")
   else: #we are matching with 'return'
     try:
       nextToken = getNextToken()
@@ -313,7 +349,7 @@ def explist(token):
     #after the checking is finished, clean for next round of exp() removal
     lastToken = token
     token = viewNextToken()
-    if(re.match(',', token)):
+    if token != False and token == ',':
       getNextToken()
       token = getNextToken()
       expectingExpression = True
@@ -480,6 +516,13 @@ def prefixexp(token):
         error("Expected name to be made!")
         return False
       else: return 'var'
+    elif token == ':':
+      #building a funccall
+      token = getNextToken()
+      if token == False or not Name.match(token):
+        error("Expected a variable name, encountered " + token + " instead")
+        return False
+      
     else:
       #totally acceptable to just output a variable name
       return 'var'
@@ -487,13 +530,14 @@ def prefixexp(token):
   else:
     error("Expected prefixed expression on " + token)
     return False
+  
 
 '''
 
-def varlist():
-  var() {',' var()}
+def varlist():        DONE - HANDLED IN STAT
+  #var() {',' var()}
 
-def var():
+def var():            CAPTURED WITHIN PREFIXEXP
   Name() or
   prefixexp() '[' exp() ']' or
   prefixexp() '.' Name
@@ -647,7 +691,7 @@ def parse(filename):
 
 if __name__ == "__main__":
   import sys
-  #try:
-  parse(sys.argv[1])
-  #except IndexError:
-    #print("Need to provide a lua file to parse")
+  try:
+    parse(sys.argv[1])
+  except IndexError:
+    print("Need to provide a lua file to parse")
