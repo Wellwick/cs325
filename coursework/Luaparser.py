@@ -116,11 +116,13 @@ def viewNextToken():
 def chunk():
   #a chunk can be broken on return or break
   #break can only be used when in a loop
+  global count
   statementsExecuting = True
   token = True
   while (token != False):
     token = getNextToken()
-    print(token)
+    if token != False:
+      print("Line",count,":" + token)
     if token != False and last.match(token):
       laststat(token)
     elif token != False and (token == 'end' or token == 'elseif' or token == 'else'):
@@ -374,7 +376,7 @@ def explist(token):
       if expectingExpression:
         error("Expected expression after ,")
         return False
-      return
+      return True
     
     #after the checking is finished, clean for next round of exp() removal
     lastToken = token
@@ -384,8 +386,9 @@ def explist(token):
       token = getNextToken()
       expectingExpression = True
     else:
-      return
+      return True
   
+  return True
   #{exp() ','} exp()
 
 def funcname():
@@ -519,7 +522,7 @@ def prefixexp(token):
   if token == '(':
     token = getNextToken()
     
-    correct = exp(token, False)
+    correct = explist(token)
     token = getNextToken()
     if token != ')':
       error("Expected closing bracket for prefixed expression")
@@ -535,7 +538,7 @@ def prefixexp(token):
     while token != False and (token == '(' or (Name.match(token) and not Keyword.match(token))):
       token = getNextToken()
       if prefixexp(token) != False:
-        correct = True and correct
+        correct = True and (correct != False)
       else:
         correct = False
       token = viewNextToken()

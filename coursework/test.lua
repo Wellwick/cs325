@@ -7,7 +7,7 @@ function factorial(n)
 end
 
 if "pi" == 2 then
-    y = 3
+    x=2
 elseif true then
     x = 4
 end
