@@ -1,11 +1,10 @@
 for i = 2, 10 do
   for j = 3, 10 do
     break
-    break
   end
 end
 
-function getThing(x) return "hi", 3, nil, function (cheese, cake, bread) 
+function getThing(x,p) return "hi", 3, nil, function (cheese, cake, bread) 
     return cheese + cake + bread end end
 
   pi = [==[    " asdasd " " ]==] + [====[ [===[ ]===] [===[ ]====] chicken = 3

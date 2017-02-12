@@ -30,7 +30,7 @@ String = re.compile('^((\".*\")|(\'.*\'))$')
 Binop = re.compile('^((\+)|(\-)|(\*)|(\/)|(\^)|(\%)|(\.\.)|(\<)|(\<\=)|(\>)|(\>\=)|(\=\=)|(\~\=)|(and)|(or))$')
 Unop = re.compile('^((\-)|(not)|(\#))$')
 Ellipse = re.compile('^(\.\.\.)$')
-LongString = re.compile('^(\[(=)*\[)$')
+LongString = re.compile('(\[(=)*\[)')
 
 #counter for keeping track of loopDepth
 loopDepth = 0
@@ -153,7 +153,7 @@ def stat():
 
 def stat(token):
   global loopDepth
-  if re.match('function', token):
+  if token == 'function':
     #function funcname() funcbody()
     print("FOUND FUNCTION")
     functionName = funcname()
@@ -331,6 +331,7 @@ def stat(token):
         error("Unexpectedly reached end of file")
         return
       
+      
       if token != '=':
         error("Expected assignment of variable(s) instead of " + token)
       elif not broken:
@@ -418,12 +419,12 @@ def funcbody(funcName):
     parlist(token, newList)
     
   #once this point is reached then the parameters have been entered
-  token = block()
   if funcName[0] == False:
     funcName = [""]
   elif len(paramlist) > 0:
     for parameter in paramlist:
       newList.extend(parameter)
+  token = block()
   
   if token != False and token == 'end':
     print("Function " + funcName[0] + " was completed")
@@ -448,10 +449,11 @@ def parlist(token, newList):
         paramlist.extend('...')
 
 def namelist(token):
-  while (Name.match(token) and not Keyword.match(token)):
+  global paramlist
+  while token != False and (Name.match(token) and not Keyword.match(token)):
     paramlist.extend(token)
     token = getNextToken()
-    if token != ',':
+    if token == False or token != ',':
       #reached the end of the namelist
       return token
     else:
@@ -459,7 +461,7 @@ def namelist(token):
   
   #if it is possible to escape the while list, there has been an error 
   #unless the token is an ellipse
-  if not Ellipse.match(token):
+  if token != False or not Ellipse.match(token):
     error("Expected variable name")
   return token
   
@@ -482,7 +484,7 @@ def exp(token, foundBinop):
     else:
       error("Expected expression after " + token, count)
       return False
-  elif re.match(token, "function"):
+  elif token == "function":
     #running function funcbody()
     val = funcbody([False])
     return val
@@ -564,6 +566,7 @@ def prefixexp(token):
       else: return 'var'
     elif token == ':' or token == '(' or token == '{' or String.match(token):
       #building a funccall
+      getNextToken()
       if token == ':':
           
         token = getNextToken()
@@ -718,7 +721,7 @@ def functioncall():         HANDLED IN PREFIXEXP mostly
   prefixexp() args() or
   prefixexp() ':' Name() args()
 
-def args():
+def args():                 MOSTLY DONE on prefixexp()
   '(' [explist()] ')' or
   tableconstructor() or
   String()
@@ -815,7 +818,7 @@ def parseLongStrings(data):
             #need to save the data
             data[count] = thisLine
             checked = False
-            print(thisLine)
+            #print(thisLine)
             break
           #no change to count so that it checks through another time in case there are other 
           #long strings
@@ -837,15 +840,13 @@ def parse(filename):
   
   data = parseLongStrings(data)
   
-  
-  
   strippedData = []
   for y in data:
       y = shlex.shlex(y, posix=True)
       strippedData.extend([y])
   
   data = strippedData
-  
+      
   print(block())
   if count < len(data) - 1:
     error("Did not reach the bottom of the file")
