@@ -4,7 +4,7 @@ function factorial(n)
     x = x * i
   end
   return "x \" words are+fun   "
-endd
+end
 
 if "pi" == 2 then
     y = 3

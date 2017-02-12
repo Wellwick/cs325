@@ -2,7 +2,6 @@ for i = 2, 10 do
   for j = 3, 10 do
     break
     break
-    x    ""
   end
 end
 
@@ -23,7 +22,7 @@ z
 print(z)
 
 
-function bread(x) print(x+1) end
+function bread(x) print(x+1) return end
 
 bread(10)
 

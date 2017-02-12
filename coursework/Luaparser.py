@@ -47,7 +47,6 @@ def error(string):
   newCount = count + 1 #increase by one since originally accessing array
   print("Error on line",newCount,": " + string)
 
-
 def returnToken(token):
   global data
   global count
@@ -138,17 +137,17 @@ def block():
 def stat():
   varlist() '=' explist() or
   functioncall() or
-  do block() end or
+  do block() end or                                         DONE!
   while exp() do block() end or
   repeat block() until exp() or
-  if exp() then block() 
-  {elseif exp() then block()} #potentially repeats
-  [else block()] end or
+  if exp() then block()                                     DONE!
+  {elseif exp() then block()} #potentially repeats          DONE!
+  [else block()] end or                                     DONE!
   for Name() '=' exp ',' exp [',' exp] do block() end or    DONE!
-  for namelist() in explist() do block() end or
-  function funcname() funcbody() or
-  local function Name() funcbody() or
-  local namelist() ['=' explist()]
+  for namelist() in explist() do block() end or             DONE!
+  function funcname() funcbody() or                         Funcbody needs completion
+  local function Name() funcbody() or                       DONE!
+  local namelist() ['=' explist()]                          DONE!
 '''
 
 def stat(token):
@@ -157,7 +156,7 @@ def stat(token):
     #function funcname() funcbody()
     print("FOUND FUNCTION")
     functionName = funcname()
-    count = funcbody(functionName)
+    funcbody(functionName)
   elif token == 'for':
     token = getNextToken()
     if Name.match(token) and not Keyword.match(token):
@@ -292,6 +291,27 @@ def stat(token):
     #decrease loopDepth again
     loopDepth = loopDepth - 1
     
+  elif token == 'local':
+    token = getNextToken()
+    if token == False or (token != 'function' and not Name.match(token)):
+      error("Expected function or namelist")
+      return
+    elif token == 'function':
+      token = getNextToken()
+      if token == False or not Name.match(token):
+        error("Expected a name for the function, instead recieved " + token)
+        return
+      
+      #now build funcbody()
+      funcbody(token)
+    else: #will result when there is a namelist
+      token = namelist(token)
+      if token != False:
+        if token == '=':
+          explist(getNextToken())
+        else:
+          returnToken(token)
+          
   elif token == '(' or (Name.match(token) and not Keyword.match(token)):
     #we are looking at varlist or a functioncall, both of which can reach out to prefixexp
     #since these are only constructed in stat, import varlist here
@@ -305,6 +325,11 @@ def stat(token):
           error("Expected variable declared after ,")
           broken = True
         token = getNextToken()
+      
+      if token == False:
+        error("Unexpectedly reached end of file")
+        return
+      
       if token != '=':
         error("Expected assignment of variable(s) instead of " + token)
       elif not broken:
@@ -314,7 +339,10 @@ def stat(token):
       #expected a function call
       error("Expected a function call or variable assignment")
   else:
-    error("Was expecting statement to begin")
+    if token != False:
+      error("Was expecting statement to begin at " + token)
+    else:
+      error("Was expecting statement to begin at end of file")
 
 def laststat(token):
   print("LastStat: " + token)
@@ -333,7 +361,6 @@ def laststat(token):
       #Specification says only expect strings on a single line
       error("Expected string to close")
       
-
 def explist(token):
   #apparently it is fully possible to return several different types in a list!
   checkingExpressions = True
@@ -344,6 +371,7 @@ def explist(token):
       #reached end of expression list
       if expectingExpression:
         error("Expected expression after ,")
+        return False
       return
     
     #after the checking is finished, clean for next round of exp() removal
@@ -476,6 +504,7 @@ def prefixexp(token):
   #as an expression can also have ',', Binop, ']', ')', ';'
   if token == '(':
     token = getNextToken()
+    
     correct = exp(token, False)
     token = getNextToken()
     if token != ')':
@@ -489,13 +518,18 @@ def prefixexp(token):
     token = viewNextToken()
     correct = True
     #there can be a recursive prefixexp
-    while token == '(' or (Name.match(token) and not Keyword.match(token)):
+    while token != False and (token == '(' or (Name.match(token) and not Keyword.match(token))):
       token = getNextToken()
       if prefixexp(token) != False:
         correct = True and correct
+      else:
+        correct = False
       token = viewNextToken()
     
-    if token == '[':
+    if token == False:
+      #you have output a variable name!
+      return 'var'
+    elif token == '[':
       getNextToken()
       #this method will encapsulate part of var
       token = getNextToken()
@@ -516,13 +550,27 @@ def prefixexp(token):
         error("Expected name to be made!")
         return False
       else: return 'var'
-    elif token == ':':
+    elif token == ':' or token == '(' or token == '{' or String.match(token):
       #building a funccall
-      token = getNextToken()
-      if token == False or not Name.match(token):
-        error("Expected a variable name, encountered " + token + " instead")
-        return False
-      
+      if token == ':':
+          
+        token = getNextToken()
+        if token == False:
+          error("Expected a variable name, encountered end of file")
+          return False
+        elif not Name.match(token):
+          error("Expected a variable name , encountered " + token + " file")
+          return False
+          
+        nextToken = getNextToken()
+        if nextToken == False or (token != '(' and token != '{' and not String.match(token)):
+          if token != False:
+            error("Expected to build args after " + token)
+          else:
+            error("Expected to build args, encountered end of file")
+          return False
+          
+      args(token)
     else:
       #totally acceptable to just output a variable name
       return 'var'
@@ -531,7 +579,109 @@ def prefixexp(token):
     error("Expected prefixed expression on " + token)
     return False
   
+def args(token):
+  if token == '(':
+    token = getNextToken()
+    if token == False:
+      error("Failed to build args because end of file reached")
+      return
+    
+    if token != ')':
+      if explist(token) == False:
+        return
+      token = getNextToken()
+      if token == False: return
+    
+    if token != ')':
+      error("Expected closing bracket for arguements, instead encountered " + token)
+      
+  elif token == '{':
+    tableconstructor(token)
+      
 
+def tableconstructor(token):
+  if token != '{': return False
+  
+  token = getNextToken()
+  if token == False:
+    error("Failed to build table, reached end of file")
+    return False
+  
+  while token != '}':
+    if field(token) == False:
+      return False
+    token = getNextToken()
+    if token != False and (token == ',' or token == ';'):
+      token = getNextToken()
+    
+    if token == False:
+      error("Failed to build table, reached end of file expecting '}'")
+      return False
+    
+  return True
+    
+    
+def field(token):
+  if token == '[':
+    # [ exp ] = exp
+    token = getNextToken()
+    if token == False or not exp(token):
+      if token != False:
+        error("Failed to build table, couldn't build expression starting at " + token)
+      else:
+        error("Failed to build table, reached end of file")
+      return False
+    
+    token = getNextToken()
+    if token == False or token != ']':
+      if token != False:
+        error("Failed to build table, was expecting ']', recieved " + token)
+      else:
+        error("Failed to build table, reached end of file")
+      return False
+    
+    token = getNextToken()
+    if token == False or token != '=':
+      if token != False:
+        error("Failed to build table, was expecting '=', recieved " + token)
+      else:
+        error("Failed to build table, reached end of file")
+      return False
+    
+    
+    token = getNextToken()
+    if token == False or not exp(token):
+      if token != False:
+        error("Failed to build table, couldn't build expression starting at " + token)
+      else:
+        error("Failed to build table, reached end of file")
+      return False
+    
+    return True
+  elif Name.match(token):
+    token = getNextToken()
+    if token == False or token != '=':
+      if token != False:
+        error("Failed to build table, was expecting '=', recieved " + token)
+      else:
+        error("Failed to build table, reached end of file")
+      return False
+    
+    token = getNextToken()
+    if token == False or not exp(token):
+      if token != False:
+        error("Failed to build table, couldn't build expression starting at " + token)
+      else:
+        error("Failed to build table, reached end of file")
+      return False
+    
+    return True
+    
+  elif not exp(token):
+    error("Did not get field at " + token)
+    return False
+  else:
+    return True
 '''
 
 def varlist():        DONE - HANDLED IN STAT
@@ -542,16 +692,13 @@ def var():            CAPTURED WITHIN PREFIXEXP
   prefixexp() '[' exp() ']' or
   prefixexp() '.' Name
 
-def namelist():
-  Name {',' Name}
 
-
-def prefixexp():
+def prefixexp():      MOSTLY DONE, need to make sure we check for ([explist]) only after a single recursion
   var() or
   functioncall() or
   '(' exp() ')'
 
-def functioncall():
+def functioncall():         HANDLED IN PREFIXEXP mostly
   prefixexp() args() or
   prefixexp() ':' Name() args()
 
@@ -684,6 +831,8 @@ def parse(filename):
   data = strippedData
   
   print(block())
+  if count < len(data) - 1:
+    error("Did not reach the bottom of the file")
   
   #runs if no errors are detected
   global errorsFound
