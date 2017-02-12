@@ -15,7 +15,8 @@ count = 0
 
 #variable name list is NOT necessary, uninitiated variables are given the nil value and catching TypeErrors is outside of scope
 #function name list
-funcNames = [[["factorial"], "n"], [["add1"], "x"], [["pasta"]], [["new", "riley", ":milo"], "pi", "cheese", "bread"]]
+funcNames = []
+paramlist = []
 
 
 #regular expressions used 
@@ -399,28 +400,35 @@ def funcname():
 def funcbody(funcName):
   newList = []
   if funcName[0] != False: #can occur if this a new expression
-    newList.extend(funcName)
+    newList.extend([funcName])
   token = getNextToken()
   #expection parenthesis
-  if token != '(':
+  if token == False or token != '(':
     error("Expecting parenthesis for function")
     return False
   
+  global paramlist
+  paramlist = []
   token = getNextToken()
-  if token == None or token == '':
-    error("Expecting parenthesis closing for function", count)
+  if token == False:
+    error("Expecting parenthesis closing for function, encountered end of file")
     return False
   elif token != ')':
     #got a parlist()
-    var = parlist(token, newList)
+    parlist(token, newList)
     
   #once this point is reached then the parameters have been entered
   token = block()
   if funcName[0] == False:
     funcName = [""]
+  elif len(paramlist) > 0:
+    for parameter in paramlist:
+      newList.extend(parameter)
   
   if token != False and token == 'end':
     print("Function " + funcName[0] + " was completed")
+    funcNames.extend([newList])
+    print(newList)
     return True
   else:
     error("Function " + funcName[0] + " was not generated because end could not be found")
@@ -428,6 +436,7 @@ def funcbody(funcName):
   #'(' [parlist()] ')' block() end
 
 def parlist(token, newList):
+  global paramlist
   if not Ellipse.match(token):
     token = namelist(token)
     if token != False and token == ',':
@@ -435,9 +444,12 @@ def parlist(token, newList):
       token = getNextToken()
       if not Ellipse.match(token):
         error("Expecting ellipse at final value")
+      else:
+        paramlist.extend('...')
 
 def namelist(token):
   while (Name.match(token) and not Keyword.match(token)):
+    paramlist.extend(token)
     token = getNextToken()
     if token != ',':
       #reached the end of the namelist
@@ -618,7 +630,11 @@ def tableconstructor(token):
       error("Failed to build table, reached end of file expecting '}'")
       return False
     
-  return True
+  if token == '}':
+    return True
+  else:
+    error("Expected '}', recieved " + token)
+    return False
     
     
 def field(token):
@@ -710,18 +726,18 @@ def args():
 def function():         <In Progress>
   function funcbody()
 
-def tableconstructor():
+def tableconstructor():                         DONE
   '{' [fieldlist()] '}'
 
-def fieldlist():
+def fieldlist():                                DONE
   field() {fieldsep() field()} [fieldsep]
 
-def field():
+def field():                                    DONE
   '[' exp() ']' '=' exp() or
   Name() '=' exp() or
   exp()
 
-def fieldsep():
+def fieldsep():                                 HANDLED IN fieldlist
   ',' or
   ';'
 '''

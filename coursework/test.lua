@@ -1,5 +1,5 @@
 function factorial(n)
-  local x = 1 2
+  local x = 1 
   for i = 2, n do
     x = x * i
   end
@@ -14,4 +14,4 @@ end
 
 function add1(x)
   return x+1
-endd
+end
