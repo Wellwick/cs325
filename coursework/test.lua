@@ -6,8 +6,8 @@ function factorial(n)
   return "x \" words are+fun   "
 end
 
-if "pi" == 2 then
-    x=2
+if "pi" >= 2 then
+    factorial(2)
 elseif true then
     x = 4
 end

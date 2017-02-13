@@ -333,7 +333,6 @@ def stat(token):
         error("Unexpectedly reached end of file")
         return
       
-      
       if token != '=':
         error("Expected assignment of variable(s) instead of " + token)
       elif not broken:
@@ -375,8 +374,9 @@ def explist(token):
       #reached end of expression list
       if expectingExpression:
         error("Expected expression after ,")
+        returnToken(token)
         return False
-      return True
+      return token
     
     #after the checking is finished, clean for next round of exp() removal
     lastToken = token
@@ -521,9 +521,15 @@ def prefixexp(token):
   #as an expression can also have ',', Binop, ']', ')', ';'
   if token == '(':
     token = getNextToken()
+    if token != False and token == ')':
+      return 'funccall'
     
     correct = explist(token)
-    token = getNextToken()
+    if correct != False:
+      token = getNextToken()
+      correct = 'funccall'
+    else:
+      token = getNextToken()
     if token != ')':
       error("Expected closing bracket for prefixed expression")
       correct = False
@@ -533,32 +539,33 @@ def prefixexp(token):
     #will either be a var or a function call, but no way to check this without recursion.
     #consume token for the Name construction
     token = viewNextToken()
-    correct = True
+    correct = 'var'
     #there can be a recursive prefixexp
     while token != False and (token == '(' or (Name.match(token) and not Keyword.match(token))):
       token = getNextToken()
-      if prefixexp(token) != False:
-        correct = True and (correct != False)
-      else:
-        correct = False
+      if correct != False:
+        correct = prefixexp(token)
       token = viewNextToken()
     
     if token == False:
       #you have output a variable name!
-      return 'var'
+      return correct
     elif token == '[':
       getNextToken()
       #this method will encapsulate part of var
       token = getNextToken()
-      correct = exp(token, False) and correct
+      if token == False or not exp(token, False):
+        if token != False:
+          error("Expected expression to occur at " + token)
+        else:
+          error("Expected expression, encountered end of file")
+        return False
       token = getNextToken()
-      if token != ']':
+      if token == False or token != ']':
         error("Expected to close [ ... ] brackets")
         return False
-      elif correct:
-        return 'var'
       else:
-        return correct
+        return 'var'
     elif token == '.':
       getNextToken()
       #another var method
@@ -577,7 +584,7 @@ def prefixexp(token):
           error("Expected a variable name, encountered end of file")
           return False
         elif not Name.match(token):
-          error("Expected a variable name , encountered " + token + " file")
+          error("Expected a variable name, encountered " + token + " file")
           return False
           
         nextToken = getNextToken()
@@ -591,7 +598,7 @@ def prefixexp(token):
       args(token)
     else:
       #totally acceptable to just output a variable name
-      return 'var'
+      return correct
     
   else:
     error("Expected prefixed expression on " + token)
@@ -799,13 +806,13 @@ def parseLongStrings(data):
           outerExpr = re.compile(outerCatch)
           index = index + 1
           #need to save string up until this point
-          thisLine = line[:startIndex] + '"'
+          thisLine = line[:startIndex] + '"\''
           
           while index < len(line):
             if line[index] == '"':
               thisLine = thisLine + "\\\""
             elif outerExpr.match(line[index:]):
-              thisLine = thisLine + '"'
+              thisLine = thisLine + '\'"'
               index = index + len(outerCatch) - 2
               thisLine = thisLine + line[index:]
               outerCatch = False

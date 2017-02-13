@@ -1,13 +1,16 @@
 for i = 2, 10 do
   for j = 3, 10 do
     break
+    break
   end
 end
+
+x = {} ()
 
 function getThing(x,p) return "hi", 3, nil, function (cheese, cake, bread) 
     return cheese + cake + bread end end
 
-  pi = [==[    " asdasd " " ]==] + [====[ [===[ ]===] [===[ ]====] chicken = 3
+  pi = [==[    " asdasd " " ]==] , [====[ [===[ ]===] [===[ ]====] chicken = 3+10
 
 print(getThing(2)) print("Hello, this is totally allowed, kill me now")
 
