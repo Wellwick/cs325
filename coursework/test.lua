@@ -1,10 +1,10 @@
 function factorial(n)
-  local x = 1 
+  local x = 1 2
   for i = 2, n do
     x = x * i
   end
   return "x \" words are+fun   "
-end
+endd
 
 if "pi" >= 2 then
     factorial(2)
@@ -14,4 +14,4 @@ end
 
 function add1(x)
   return x+1
-end
+endd

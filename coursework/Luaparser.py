@@ -48,6 +48,7 @@ def error(string):
   newCount = count + 1 #increase by one since originally accessing array
   print("Error on line",newCount,": " + string)
 
+#can only afford to do once or line number is lost
 def returnToken(token):
   global data
   global count
@@ -121,8 +122,8 @@ def chunk():
   token = True
   while (token != False):
     token = getNextToken()
-    if token != False:
-      print("Line",count,":" + token)
+    #if token != False: #debug 
+    #  print("Line",count,":" + token)
     if token != False and last.match(token):
       laststat(token)
     elif token != False and (token == 'end' or token == 'elseif' or token == 'else'):
@@ -157,37 +158,42 @@ def stat(token):
   global loopDepth
   if token == 'function':
     #function funcname() funcbody()
-    print("FOUND FUNCTION")
+    #print("FOUND FUNCTION") #debug
     functionName = funcname()
     funcbody(functionName)
   elif token == 'for':
     token = getNextToken()
+    if token == False:
+      return
     if Name.match(token) and not Keyword.match(token):
       nextToken = viewNextToken()
       if nextToken == '=':
         #looking for exp, exp, [, exp]
         getNextToken()
         token = getNextToken()
-        if not exp(token, False):
+        if token == False or not exp(token, False):
           error("Expected expression after '=' in for statement")
           return
         
         token = getNextToken()
-        if token != ',':
+        if token == False or token != ',':
           error("Expected ',' after expression in for statement")
           return
         
         token = getNextToken()
-        if not exp(token, False):
-          error("Expected expression after ',' in for statement, instead got " + token)
+        if token == False or not exp(token, False):
+          if token != False:
+            error("Expected expression after ',' in for statement, instead got " + token)
+          else:
+            error("Expected expression after ',' in for statement, instead encountered end of file")
           return
         
         token = getNextToken()
-        print("Starting for loop: " + token)
-        if token == ',':
+        #print("Starting for loop: " + token) #debug
+        if token == False or token == ',':
           #want another expression
           token = getNextToken()
-          if not exp(token, False):
+          if token == False or not exp(token, False):
             error("Expected expression after ',' in for statement")
             return
           
@@ -197,7 +203,10 @@ def stat(token):
         #expecting namelist in explist
         token = namelist(token)
         if token == False or token != 'in':
-          error("Expected 'in' for 'for' loop, encountered " + token)
+          if token != False:
+            error("Expected 'in' for 'for' loop, encountered " + token)
+          else:
+            error("Expected 'in' for 'for' loop, encountered end of file")
           return
         
         token = getNextToken()
@@ -206,8 +215,11 @@ def stat(token):
         token = getNextToken()
       
       #completed the differentiation for 
-      if token != 'do':
-        error("Expected 'do' to lead into for block, instead received " + token)
+      if token == False or token != 'do':
+        if token != False:
+          error("Expected 'do' to lead into for block, instead received " + token)
+        else:
+          error("Expected 'do' to lead into for block, instead received end of file")
         return
       
       #need to increase loopDepth
@@ -235,7 +247,7 @@ def stat(token):
     
     token = getNextToken()
     if token == False or token != 'then':
-      error("Was expecting 'then' after expression in 'if' clause, instead recieved " + token)
+      error("Was expecting 'then' after expression in 'if' clause")
       return
     
     val = block()
@@ -302,7 +314,10 @@ def stat(token):
     elif token == 'function':
       token = getNextToken()
       if token == False or not Name.match(token):
-        error("Expected a name for the function, instead recieved " + token)
+        if token != False:
+          error("Expected a name for the function, instead recieved " + token)
+        else:
+          error("Expected a name for the function, instead recieved end of file")
         return
       
       #now build funcbody()
@@ -324,7 +339,7 @@ def stat(token):
       broken = False
       while token == ',':
         token = getNextToken()
-        if prefixexp(token) != 'var':
+        if token == False or prefixexp(token) != 'var':
           error("Expected variable declared after ,")
           broken = True
         token = getNextToken()
@@ -348,7 +363,7 @@ def stat(token):
       error("Was expecting statement to begin at end of file")
 
 def laststat(token):
-  print("LastStat: " + token)
+  #print("LastStat: " + token) #debug
   global loopDepth
   if re.match('break', token):
     #don't decrease loopDepth until we find an end
@@ -394,7 +409,7 @@ def explist(token):
 def funcname():
   # can just be a sequence of names
   token = getNextToken()
-  if (not Name.match(token)) or Keyword.match(token):
+  if token == False or (not Name.match(token)) or Keyword.match(token):
     error("Expected function name")
     return [False]
   else:
@@ -430,12 +445,15 @@ def funcbody(funcName):
   token = block()
   
   if token != False and token == 'end':
-    print("Function " + funcName[0] + " was completed")
+    #print("Function " + funcName[0] + " was completed") #debug
     funcNames.extend([newList])
-    print(newList)
+    #print(newList) #debug
     return True
   else:
-    error("Function " + funcName[0] + " was not generated because end could not be found")
+    if len(funcName) > 0:
+      error("Function " + funcName[0] + " was not generated because end could not be found")
+    else:
+      error("Function was not generated because end could not be found")
     return False
   #'(' [parlist()] ')' block() end
 
@@ -446,7 +464,7 @@ def parlist(token, newList):
     if token != False and token == ',':
       #we expect the next symbol to be an ellipse
       token = getNextToken()
-      if not Ellipse.match(token):
+      if token == False or not Ellipse.match(token):
         error("Expecting ellipse at final value")
       else:
         paramlist.extend('...')
@@ -464,7 +482,7 @@ def namelist(token):
   
   #if it is possible to escape the while list, there has been an error 
   #unless the token is an ellipse
-  if token != False or not Ellipse.match(token):
+  if token == False or not Ellipse.match(token):
     error("Expected variable name")
   return token
   
@@ -474,8 +492,11 @@ def exp(token, foundBinop):
   if nextToken != False and Binop.match(nextToken) and not foundBinop:
     step = exp(token, True)
     x = getNextToken() #pulling binop back out again
-    print("Found a binop expression match " + x)
+    #print("Found a binop expression match " + x) #debug command
     newToken = getNextToken()
+    if newToken == False:
+      error("Expected expression, recieved end of file")
+      return
     step2 = exp(newToken, False)
     return (step != False and step2 != False)
   if token == "nil" or token == "false" or token == "true" or String.match(token) or Number.match(token) or token == "...":
@@ -485,7 +506,7 @@ def exp(token, foundBinop):
     if val:
       return True
     else:
-      error("Expected expression after " + token, count)
+      error("Expected expression after " + token)
       return False
   elif token == "function":
     #running function funcbody()
@@ -530,7 +551,7 @@ def prefixexp(token):
       correct = 'funccall'
     else:
       token = getNextToken()
-    if token != ')':
+    if token == False or token != ')':
       error("Expected closing bracket for prefixed expression")
       correct = False
     
@@ -570,7 +591,7 @@ def prefixexp(token):
       getNextToken()
       #another var method
       token = getNextToken()
-      if not (Name.match(token) and not Keyword.match(token)):
+      if token == False or not (Name.match(token) and not Keyword.match(token)):
         error("Expected name to be made!")
         return False
       else: return 'var'
@@ -601,7 +622,10 @@ def prefixexp(token):
       return correct
     
   else:
-    error("Expected prefixed expression on " + token)
+    if token != False:
+      error("Expected prefixed expression on " + token)
+    else:
+      error("Expected prefixed expression, encountered end of file")
     return False
   
 def args(token):
@@ -857,7 +881,7 @@ def parse(filename):
   
   data = strippedData
       
-  print(block())
+  block()
   if count < len(data) - 1:
     error("Did not reach the bottom of the file")
   
